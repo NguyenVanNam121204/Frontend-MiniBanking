@@ -1,0 +1,41 @@
+@reference "tailwindcss";
+@reference "../../../index.css";
+.login-wrapper {
+  @apply min-h-screen flex items-center justify-center bg-slate-950 relative overflow-hidden;
+}
+
+/* Các vòng sáng Neon trang trí nền */
+.neon-glow {
+  @apply absolute rounded-full blur-[100px] opacity-40 pointer-events-none;
+}
+
+.glow-1 {
+  @apply bg-blue-500 w-[500px] h-[500px] top-[-150px] left-[-150px];
+}
+
+.glow-2 {
+  @apply bg-cyan-400 w-[400px] h-[400px] bottom-[-100px] right-[-100px];
+}
+
+/* Thẻ kính mờ (Glassmorphism) */
+.glass-card {
+  @apply bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 p-10 rounded-3xl w-[420px] shadow-2xl z-10;
+}
+
+/* Input Styles */
+.input-field {
+  @apply w-full px-5 py-4 bg-slate-800/50 border border-slate-700 text-slate-200 rounded-xl outline-none placeholder:text-slate-500 transition-all duration-300;
+}
+
+.input-field:focus {
+  @apply border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)];
+}
+
+/* Button Styles */
+.btn-primary {
+  @apply w-full py-4 mt-4 bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-bold rounded-xl tracking-wider uppercase transition-all duration-300 shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary:not(:disabled):hover {
+  @apply transform -translate-y-1 shadow-cyan-500/40;
+}

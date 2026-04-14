@@ -1,0 +1,4 @@
+@reference "tailwindcss";
+
+/* Nơi cấu hình các style CSS đặc thù riêng nếu AdminLayout phức tạp hơn */
+/* Hiện tại đa phần chạy bằng Tailwind Utility classes trong file tsx */

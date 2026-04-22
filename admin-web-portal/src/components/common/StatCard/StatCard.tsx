@@ -9,15 +9,20 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   delay?: number;
+  onClick?: () => void;
+  className?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, trend, trendUp, delay = 0 }) => {
+const StatCard: React.FC<StatCardProps> = ({ 
+  title, value, icon: Icon, trend, trendUp, delay = 0, onClick, className 
+}) => {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group"
+      onClick={onClick}
+      className={`bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden group ${onClick ? 'cursor-pointer hover:border-slate-700 transition-all' : ''} ${className || ''}`}
     >
       <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
         <Icon size={100} />

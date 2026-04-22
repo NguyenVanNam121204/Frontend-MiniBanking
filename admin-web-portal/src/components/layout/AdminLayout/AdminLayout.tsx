@@ -15,9 +15,9 @@ const AdminLayout = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-    { name: 'User Management', path: '/admin/users', icon: Users },
-    { name: 'Accounts & Cards', path: '/admin/accounts', icon: CreditCard },
-    { name: 'System Logs', path: '/admin/logs', icon: Activity },
+    { name: 'Người dùng', path: '/admin/users', icon: Users },
+    { name: 'Giao dịch', path: '/admin/transactions', icon: CreditCard },
+    { name: 'Audit Trail', path: '/admin/logs', icon: Activity },
   ];
 
   return (

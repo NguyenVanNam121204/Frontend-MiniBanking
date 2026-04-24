@@ -21,9 +21,16 @@ export interface PaginatedResponse<T> {
 }
 
 export const userApi = {
-  getUsers: async (page = 0, size = 10) => {
-    const response = await apiClient.get<{ data: PaginatedResponse<User> }>(`/admin/users?page=${page}&size=${size}`);
+  getUsers: async (page = 0, size = 10, keyword?: string) => {
+    let url = `/admin/users?page=${page}&size=${size}`;
+    if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+    const response = await apiClient.get<{ data: PaginatedResponse<User> }>(url);
     return response.data.data;
+  },
+
+  createUser: async (userData: any) => {
+    const response = await apiClient.post('/admin/users/', userData);
+    return response.data;
   },
 
   lockUser: async (userId: number) => {

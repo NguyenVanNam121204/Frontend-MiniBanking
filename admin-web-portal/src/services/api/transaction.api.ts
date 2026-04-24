@@ -6,8 +6,12 @@ export interface Transaction {
   type: 'DEPOSIT' | 'WITHDRAW' | 'TRANSFER';
   amount: number;
   status: string;
-  sourceAccountNumber?: string;
-  destinationAccountNumber?: string;
+  fromAccountId?: number;
+  fromAccountNumber?: string;
+  fromAccountOwner?: string;
+  toAccountId?: number;
+  toAccountNumber?: string;
+  toAccountOwner?: string;
   description: string;
   createdAt: string;
 }

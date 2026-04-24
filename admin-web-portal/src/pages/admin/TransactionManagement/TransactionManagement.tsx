@@ -252,7 +252,7 @@ const TransactionManagement: React.FC = () => {
                       <span className={`text-sm font-bold ${
                         tx.type === 'DEPOSIT' ? 'text-green-400' : tx.type === 'WITHDRAW' ? 'text-red-400' : 'text-blue-400'
                       }`}>
-                        {tx.type === 'WITHDRAW' || (tx.type === 'TRANSFER' && tx.sourceAccountNumber) ? '-' : '+'}
+                        {tx.type === 'WITHDRAW' || (tx.type === 'TRANSFER' && tx.fromAccountNumber) ? '-' : '+'}
                         {formatCurrency(tx.amount)}
                       </span>
                     </td>
@@ -260,8 +260,18 @@ const TransactionManagement: React.FC = () => {
                       <div className="flex flex-col">
                         <p className="text-xs text-slate-400 line-clamp-1">{tx.description}</p>
                         {tx.type === 'TRANSFER' && (
+                          <p className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                            <span className="text-blue-300">{tx.fromAccountOwner}</span> → <span className="text-blue-300">{tx.toAccountOwner}</span>
+                          </p>
+                        )}
+                        {tx.type === 'DEPOSIT' && (
                           <p className="text-[10px] text-slate-500 mt-0.5">
-                            {tx.sourceAccountNumber} → {tx.destinationAccountNumber}
+                            Tới: <span className="text-green-300 font-medium">{tx.toAccountOwner}</span> ({tx.toAccountNumber})
+                          </p>
+                        )}
+                        {tx.type === 'WITHDRAW' && (
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            Từ: <span className="text-red-300 font-medium">{tx.fromAccountOwner}</span> ({tx.fromAccountNumber})
                           </p>
                         )}
                       </div>
@@ -402,23 +412,55 @@ const TransactionManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50">
+              {/* Thông tin tài khoản - Thiết kế mới dạng Card */}
+              <div className="flex items-center gap-3 relative py-2">
+                {/* Tài khoản nguồn */}
+                <div className="flex-1 bg-slate-950/60 border border-slate-800/80 p-4 rounded-2xl space-y-2 relative overflow-hidden group hover:border-red-500/30 transition-colors">
+                  <div className="absolute -top-2 -right-2 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+                    <ArrowUpRight className="text-red-400" size={48} />
+                  </div>
+                  <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">Tài khoản nguồn</p>
+                  <div>
+                    <p className="text-sm font-bold text-slate-200 truncate">
+                      {detailModal.tx.fromAccountOwner || (detailModal.tx.type === 'DEPOSIT' ? 'Hệ thống (System)' : 'N/A')}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono mt-1 tracking-tighter flex items-center gap-1">
+                      {detailModal.tx.fromAccountNumber || (detailModal.tx.fromAccountId ? `ID: #${detailModal.tx.fromAccountId}` : '---')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Icon chuyển đổi */}
+                <div className="z-10 w-8 h-8 shrink-0 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center shadow-xl ring-4 ring-slate-900">
+                  <ArrowRightLeft size={14} className="text-blue-400" />
+                </div>
+
+                {/* Tài khoản nhận */}
+                <div className="flex-1 bg-slate-950/60 border border-slate-800/80 p-4 rounded-2xl space-y-2 relative overflow-hidden group hover:border-green-500/30 transition-colors">
+                   <div className="absolute -top-2 -right-2 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+                    <ArrowDownLeft className="text-green-400" size={48} />
+                  </div>
+                  <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">Tài khoản nhận</p>
+                  <div>
+                    <p className="text-sm font-bold text-slate-200 truncate">
+                      {detailModal.tx.toAccountOwner || (detailModal.tx.type === 'WITHDRAW' ? 'Hệ thống (System)' : 'N/A')}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono mt-1 tracking-tighter flex items-center gap-1">
+                      {detailModal.tx.toAccountNumber || (detailModal.tx.toAccountId ? `ID: #${detailModal.tx.toAccountId}` : '---')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid thông tin phụ */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50">
                 <div className="space-y-1">
                   <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Mã tham chiếu</p>
-                  <p className="text-sm font-mono text-slate-200">{detailModal.tx.referenceNumber}</p>
+                  <p className="text-xs font-mono text-blue-400 font-bold">{detailModal.tx.referenceNumber}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Loại giao dịch</p>
-                  <p className="text-sm font-bold text-slate-200">{detailModal.tx.type}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tài khoản nguồn</p>
-                  <p className="text-sm font-medium text-slate-300">{detailModal.tx.sourceAccountNumber || 'N/A (Hệ thống)'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Tài khoản nhận</p>
-                  <p className="text-sm font-medium text-slate-300">{detailModal.tx.destinationAccountNumber || 'N/A (Hệ thống)'}</p>
+                  <p className="text-xs font-bold text-slate-200 bg-slate-800 px-2 py-0.5 rounded-md inline-block">{detailModal.tx.type}</p>
                 </div>
                 <div className="col-span-2 space-y-1 pt-2 border-t border-slate-800/50">
                   <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Nội dung</p>

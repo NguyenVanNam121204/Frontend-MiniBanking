@@ -8,7 +8,8 @@ import {
   ChevronRight, 
   Calendar,
   User as UserIcon,
-  Download
+  Download,
+  XCircle
 } from 'lucide-react';
 
 const AuditLogs: React.FC = () => {
@@ -17,6 +18,7 @@ const AuditLogs: React.FC = () => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,7 +41,52 @@ const AuditLogs: React.FC = () => {
 
   const handleFilter = () => {
     setPage(0); 
-    fetchLogs(0); // Truyen truc tiep 0 de dam bao khong dung state cu
+    fetchLogs(0);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setActionType('ALL');
+    setDateFilter('');
+    setPage(0);
+    // Use setTimeout to ensure state updates before fetch
+    setTimeout(() => fetchLogs(0), 0);
+  };
+
+  const getActionColor = (action: string) => {
+    if (['LOGIN', 'LOGOUT', 'REGISTER', 'EMAIL_VERIFIED', 'PASSWORD_CHANGE', 'PASSWORD_RESET', 'PIN_CHANGE'].includes(action)) return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+    if (['DEPOSIT', 'WITHDRAW', 'TRANSFER', 'TRANSFER_PENDING', 'TRANSFER_SUCCESS'].includes(action)) return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+    if (['UNAUTHORIZED_ACCESS'].includes(action)) return 'text-red-400 bg-red-400/10 border-red-400/20';
+    return 'text-purple-400 bg-purple-400/10 border-purple-400/20'; // ADMIN actions
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const blob = await auditApi.exportLogsCsv(searchTerm, actionType, dateFilter);
+      
+      // Create a temporary link element to trigger the download
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const fileName = dateFilter 
+        ? `Audit_Report_${dateFilter.replace(/-/g, '_')}.csv`
+        : `Audit_Report_${new Date().toISOString().split('T')[0]}.csv`;
+        
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Lỗi khi xuất báo cáo:', error);
+      alert('Đã xảy ra lỗi khi xuất báo cáo. Vui lòng thử lại sau.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   useEffect(() => {
@@ -58,9 +105,17 @@ const AuditLogs: React.FC = () => {
           <p className="text-slate-400 text-sm mt-1">Giám sát và truy vết mọi hoạt động trên hệ thống</p>
         </div>
         
-        <button className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:border-slate-700 transition-all">
-          <Download size={18} />
-          <span>Xuất báo cáo</span>
+        <button 
+          onClick={handleExport}
+          disabled={exporting || logs.length === 0}
+          className={`flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-slate-300 transition-all ${exporting || logs.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:text-white hover:border-slate-700 active:scale-95'}`}
+        >
+          {exporting ? (
+            <div className="w-4 h-4 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
+          ) : (
+            <Download size={18} />
+          )}
+          <span>{exporting ? 'Đang xuất...' : 'Xuất báo cáo'}</span>
         </button>
       </div>
 
@@ -73,11 +128,19 @@ const AuditLogs: React.FC = () => {
             <input 
               type="text" 
               placeholder="Nhập tên người dùng..." 
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 transition-all"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500/50 transition-all focus:ring-1 focus:ring-purple-500/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
             />
+            {searchTerm && (
+              <button 
+                onClick={() => { setSearchTerm(''); handleFilter(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              >
+                <XCircle size={14} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -108,18 +171,31 @@ const AuditLogs: React.FC = () => {
           </div>
         </div>
 
-        <button 
-          onClick={handleFilter}
-          disabled={loading}
-          className={`bg-purple-600 hover:bg-purple-700 text-white p-2.5 rounded-xl transition-all shadow-lg shadow-purple-900/20 active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          title="Áp dụng bộ lọc"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-          ) : (
-            <Filter size={20} />
+        <div className="flex gap-2">
+          <button 
+            onClick={handleFilter}
+            disabled={loading}
+            className={`bg-purple-600 hover:bg-purple-700 text-white p-2.5 rounded-xl transition-all shadow-lg shadow-purple-900/20 active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Áp dụng bộ lọc"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <Filter size={20} />
+            )}
+          </button>
+          
+          {(searchTerm || actionType !== 'ALL' || dateFilter) && (
+            <button 
+              onClick={clearFilters}
+              disabled={loading}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl border border-slate-700 transition-all active:scale-95"
+              title="Xóa bộ lọc"
+            >
+              <XCircle size={20} />
+            </button>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Logs Table */}
@@ -164,7 +240,7 @@ const AuditLogs: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-md text-[10px] font-bold">
+                      <span className={`px-2.5 py-1 border rounded-md text-[10px] font-bold tracking-wider ${getActionColor(log.action)}`}>
                         {log.action}
                       </span>
                     </td>

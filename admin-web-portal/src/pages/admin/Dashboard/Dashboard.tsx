@@ -78,12 +78,13 @@ const Dashboard = () => {
           onClick={() => navigate('/admin/transactions')}
         />
         <StatCard 
-          title="Thẻ Bị Khóa" 
+          title="Tài Khoản Bị Khóa" 
           value={stats?.lockedUsers || 0} 
           icon={ShieldAlert} 
           trend="-2%" 
           trendUp={false} 
           delay={0.3} 
+          onClick={() => navigate('/admin/users')}
         />
       </div>
 
@@ -127,8 +128,8 @@ const Dashboard = () => {
                   contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                   itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
                   labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-                  formatter={(value: number) => [
-                    formatFullCurrency(value),
+                  formatter={(value: any) => [
+                    formatFullCurrency(Number(value)),
                     'Tổng dòng tiền'
                   ]}
                 />

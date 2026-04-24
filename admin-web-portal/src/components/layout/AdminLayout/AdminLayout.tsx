@@ -1,12 +1,38 @@
 
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, Activity, LogOut, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, LogOut, Bell, Calendar } from 'lucide-react';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { useEffect, useState } from 'react';
 import './AdminLayout.css';
 
+const parseJwt = (token: string | null) => {
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+};
+
 const AdminLayout = () => {
-  const logout = useAuthStore((state) => state.logout);
+  const { token, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [username, setUsername] = useState('Admin');
+
+  useEffect(() => {
+    const decoded = parseJwt(token);
+    if (decoded && decoded.sub) {
+      setUsername(decoded.sub);
+    }
+  }, [token]);
+
+  const now = new Date();
+  const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+  const dayName = days[now.getDay()];
+  const day = now.getDate().toString().padStart(2, '0');
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const year = now.getFullYear();
+  const currentDate = `${dayName}, ngày ${day} tháng ${month} năm ${year}`;
 
   const handleLogout = () => {
     logout();
@@ -65,13 +91,19 @@ const AdminLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
         <header className="h-20 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-8 z-10 sticky top-0">
-          <div className="flex items-center hidden relative xl:flex lg:flex md:flex sm:hidden">
-            <Search className="absolute left-3 text-slate-500" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search user, transaction..." 
-              className="bg-slate-800/50 border border-slate-700 text-slate-200 text-sm rounded-lg pl-10 pr-4 py-2 outline-none focus:border-cyan-500 transition-colors w-72"
-            />
+          <div className="flex items-center hidden relative xl:flex lg:flex md:flex sm:hidden group cursor-default">
+            {/* Vùng phát sáng nền khi Hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-400/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            
+            {/* Widget hiển thị ngày tháng */}
+            <div className="relative flex items-center gap-3 px-5 py-2.5 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 group-hover:border-blue-500/50 rounded-2xl shadow-lg transition-all duration-300">
+              <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)] group-hover:scale-110 transition-transform duration-300">
+                <Calendar size={18} className="text-white" />
+              </div>
+              <span className="text-sm font-semibold bg-gradient-to-r from-slate-200 to-white bg-clip-text text-transparent">
+                {currentDate}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-6 ml-auto">
@@ -79,13 +111,19 @@ const AdminLayout = () => {
               <Bell size={22} />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900"></span>
             </button>
-            <div className="flex items-center gap-3 pl-6 border-l border-slate-700">
+            <div className="flex items-center gap-4 pl-6 border-l border-slate-700/50">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-white">System Admin</p>
-                <p className="text-xs text-slate-400">Headquarters</p>
+                <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-0.5">Welcome back</p>
+                <p className="text-sm font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent uppercase tracking-wider">{username}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center overflow-hidden">
-                <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="Admin" />
+              <div className="relative group cursor-pointer">
+                {/* Hiệu ứng viền phát sáng */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full blur opacity-40 group-hover:opacity-75 transition-opacity duration-300"></div>
+                <div className="relative w-11 h-11 rounded-full p-[2px] bg-gradient-to-r from-blue-500 to-cyan-400">
+                  <div className="w-full h-full rounded-full border-2 border-slate-900 overflow-hidden bg-slate-900">
+                    <img className="w-full h-full object-cover" src={`https://ui-avatars.com/api/?name=${username}&background=0f172a&color=38bdf8&bold=true`} alt="Avatar" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

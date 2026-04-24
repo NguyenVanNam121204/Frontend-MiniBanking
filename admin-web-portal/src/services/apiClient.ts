@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -68,7 +70,7 @@ apiClient.interceptors.response.use(
 
       try {
         // Dùng axios thuần để gọi API refresh token (tránh lặp vô tận interceptor của apiClient)
-        const response = await axios.post('http://localhost:8080/api/auth/refresh-token', { refreshToken });
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken });
         const newAccessToken = response.data.data.accessToken;
         const newRefreshToken = response.data.data.refreshToken;
         

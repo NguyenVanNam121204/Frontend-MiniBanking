@@ -27,5 +27,18 @@ export const auditApi = {
     
     const response = await apiClient.get<{ data: PaginatedResponse<AuditLog> }>(url);
     return response.data.data;
+  },
+
+  exportLogsCsv: async (username?: string, action?: string, date?: string) => {
+    let url = `/admin/audit-logs/export?`;
+    const params = new URLSearchParams();
+    if (username) params.append('username', username);
+    if (action && action !== 'ALL') params.append('action', action);
+    if (date) params.append('date', date);
+    
+    const response = await apiClient.get(url + params.toString(), {
+      responseType: 'blob'
+    });
+    return response.data;
   }
 };

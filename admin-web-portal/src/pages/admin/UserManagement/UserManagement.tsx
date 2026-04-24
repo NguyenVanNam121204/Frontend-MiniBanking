@@ -11,11 +11,14 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Shield
+  Shield,
+  UserPlus
 } from 'lucide-react';
 import ConfirmModal from '../../../components/common/Modal/ConfirmModal';
 import SuccessModal from '../../../components/common/Modal/SuccessModal';
+import ErrorModal from '../../../components/common/Modal/ErrorModal';
 import ResetPasswordModal from '../../../components/common/Modal/ResetPasswordModal';
+import CreateUserModal from '../../../components/common/Modal/CreateUserModal';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -23,6 +26,7 @@ const UserManagement: React.FC = () => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Modal States
   const [confirmModal, setConfirmModal] = useState<{
@@ -57,10 +61,20 @@ const UserManagement: React.FC = () => {
     message: ''
   });
 
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data = await userApi.getUsers(page, 10);
+      const data = await userApi.getUsers(page, 10, searchTerm);
       setUsers(data.content);
       setTotalPages(data.page.totalPages);
     } catch (error) {
@@ -68,6 +82,11 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = () => {
+    setPage(0);
+    fetchUsers();
   };
 
   useEffect(() => {
@@ -95,9 +114,14 @@ const UserManagement: React.FC = () => {
       });
       
       fetchUsers();
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi thực hiện thao tác');
-      setConfirmModal(prev => ({ ...prev, isLoading: false }));
+    } catch (error: any) {
+      setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+      const errorMsg = error.response?.data?.message || 'Có lỗi xảy ra khi thực hiện thao tác';
+      setErrorModal({
+        isOpen: true,
+        title: 'Thao tác thất bại',
+        message: errorMsg
+      });
     }
   };
 
@@ -160,10 +184,21 @@ const UserManagement: React.FC = () => {
               className="bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 w-full md:w-64 transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <button className="bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-colors">
+          <button 
+            onClick={handleSearch}
+            className="bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-colors"
+          >
             <Filter className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-semibold"
+          >
+            <UserPlus className="w-5 h-5" />
+            <span className="hidden md:inline">Thêm người dùng</span>
           </button>
         </div>
       </div>
@@ -286,7 +321,28 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <ConfirmModal 
+      <CreateUserModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+        onSuccess={(username) => {
+          setIsCreateModalOpen(false);
+          setSuccessModal({
+            isOpen: true,
+            title: 'Tạo tài khoản thành công',
+            message: `Tài khoản người dùng ${username} đã được tạo và cấp quyền thành công.`
+          });
+          handleSearch();
+        }}
+      />
+
+      <ErrorModal 
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal(prev => ({ ...prev, isOpen: false }))}
+        title={errorModal.title}
+        message={errorModal.message}
+      />
+
+      <ConfirmModal  
         isOpen={confirmModal.isOpen}
         isLoading={confirmModal.isLoading}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}

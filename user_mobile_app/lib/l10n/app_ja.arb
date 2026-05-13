@@ -1,0 +1,19 @@
+{
+  "@@locale": "ja",
+  "welcomeBack": "おかえりなさい",
+  "signInSubtitle": "安全な銀行取引を続けるためにログインしてください",
+  "username": "ユーザー名 / メールアドレス",
+  "password": "パスワード",
+  "forgotPassword": "パスワードをお忘れですか？",
+  "signIn": "ログイン",
+  "dontHaveAccount": "アカウントをお持ちではありませんか？",
+  "registerNow": "今すぐ登録",
+  "createAccount": "アカウント作成",
+  "joinUsSubtitle": "モダンな銀行体験を始めるために参加しましょう",
+  "email": "メールアドレス",
+  "register": "今すぐ登録",
+  "alreadyHaveAccount": "すでにアカウントをお持ちですか？",
+  "verifyCode": "コードを確認",
+  "resendCode": "コードを再送",
+  "verifyContinue": "確認して続行"
+}

@@ -1,0 +1,23 @@
+{
+  "@@locale": "en",
+  "welcomeBack": "Welcome Back",
+  "signInSubtitle": "Sign in to continue your secure banking",
+  "username": "Username / Email",
+  "password": "Password",
+  "forgotPassword": "Forgot Password?",
+  "signIn": "Sign In",
+  "dontHaveAccount": "Don't have an account? ",
+  "registerNow": "Register Now",
+  "createAccount": "Create Account",
+  "joinUsSubtitle": "Join us to start your modern banking journey",
+  "email": "Email Address",
+  "register": "Register Now",
+  "alreadyHaveAccount": "Already have an account? ",
+  "verifyCode": "Verify Code",
+  "resendCode": "Resend Code",
+  "verifyContinue": "Verify & Continue",
+  "otpSubtitle": "Please enter the 6-digit verification code sent to your email",
+  "didNotReceiveCode": "Didn't receive the code? ",
+  "resendIn": "Resend in ",
+  "forgotPasswordTitle": "Forgot Password?"
+}

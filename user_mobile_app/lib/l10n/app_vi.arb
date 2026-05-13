@@ -1,0 +1,23 @@
+{
+  "@@locale": "vi",
+  "welcomeBack": "Chào mừng trở lại",
+  "signInSubtitle": "Đăng nhập để tiếp tục trải nghiệm ngân hàng an toàn",
+  "username": "Tên đăng nhập / Email",
+  "password": "Mật khẩu",
+  "forgotPassword": "Quên mật khẩu?",
+  "signIn": "Đăng nhập",
+  "dontHaveAccount": "Chưa có tài khoản? ",
+  "registerNow": "Đăng ký ngay",
+  "createAccount": "Tạo tài khoản",
+  "joinUsSubtitle": "Tham gia cùng chúng tôi để bắt đầu hành trình ngân hàng hiện đại",
+  "email": "Địa chỉ Email",
+  "register": "Đăng ký ngay",
+  "alreadyHaveAccount": "Đã có tài khoản? ",
+  "verifyCode": "Xác nhận mã",
+  "resendCode": "Gửi lại mã",
+  "verifyContinue": "Xác nhận & Tiếp tục",
+  "otpSubtitle": "Vui lòng nhập mã xác thực 6 chữ số đã được gửi tới email",
+  "didNotReceiveCode": "Bạn không nhận được mã? ",
+  "resendIn": "Gửi lại sau ",
+  "forgotPasswordTitle": "Quên mật khẩu?"
+}

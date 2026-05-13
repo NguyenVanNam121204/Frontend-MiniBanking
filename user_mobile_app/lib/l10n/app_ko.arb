@@ -1,0 +1,19 @@
+{
+  "@@locale": "ko",
+  "welcomeBack": "다시 오신 것을 환영합니다",
+  "signInSubtitle": "안전한 뱅킹을 계속하려면 로그인하세요",
+  "username": "사용자 이름 / 이메일",
+  "password": "비밀번호",
+  "forgotPassword": "비밀번호를 잊으셨나요?",
+  "signIn": "로그인",
+  "dontHaveAccount": "계정이 없으신가요? ",
+  "registerNow": "지금 등록하세요",
+  "createAccount": "계정 만들기",
+  "joinUsSubtitle": "현대적인 뱅킹 여정을 시작하려면 가입하세요",
+  "email": "이메일 주소",
+  "register": "지금 등록하세요",
+  "alreadyHaveAccount": "이미 계정이 있으신가요? ",
+  "verifyCode": "코드 확인",
+  "resendCode": "코드 재전송",
+  "verifyContinue": "확인 및 계속"
+}

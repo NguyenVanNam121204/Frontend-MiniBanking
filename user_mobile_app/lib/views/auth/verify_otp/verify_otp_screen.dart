@@ -7,7 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../app/providers.dart';
 import '../../../core/app/app_colors.dart';
-import '../widgets/auth_widgets.dart';
+import '../../../widgets/auth/auth_widgets.dart';
 
 class VerifyOtpScreen extends ConsumerStatefulWidget {
   final String email;

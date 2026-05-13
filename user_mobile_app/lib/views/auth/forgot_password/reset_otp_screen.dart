@@ -7,7 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../app/providers.dart';
 import '../../../core/app/app_colors.dart';
 import '../../../l10n/generated/app_localizations.dart';
-import '../widgets/auth_widgets.dart';
+import '../../../widgets/auth/auth_widgets.dart';
 import 'new_password_screen.dart';
 
 class ResetOtpScreen extends ConsumerStatefulWidget {

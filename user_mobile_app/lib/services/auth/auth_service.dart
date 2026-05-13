@@ -5,7 +5,7 @@ import '../../repositories/auth/auth_repository.dart';
 import '../storage_service.dart';
 
 class AuthService {
-  final AuthRepository _authRepository;
+  final IAuthRepository _authRepository;
   final StorageService _storageService;
 
   AuthService(this._authRepository, this._storageService);
@@ -47,5 +47,10 @@ class AuthService {
   }
   Future<Result<void, AppException>> verifyResetOtp(VerifyEmailRequestDto request) async {
     return _authRepository.verifyResetOtp(request);
+  }
+
+  Future<void> logout() async {
+    await _storageService.clearTokens();
+    await _storageService.clearUsername();
   }
 }

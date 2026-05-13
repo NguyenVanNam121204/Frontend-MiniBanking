@@ -5,6 +5,10 @@ import '../network/dio_client.dart';
 import '../../services/storage_service.dart';
 import '../../services/auth/auth_service.dart';
 import '../../repositories/auth/auth_repository.dart';
+import '../../repositories/auth/auth_repository_impl.dart';
+import '../../repositories/account/account_repository.dart';
+import '../../repositories/account/account_repository_impl.dart';
+import '../../services/account/account_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -17,8 +21,9 @@ Future<void> setupInjection() async {
   getIt.registerLazySingleton<Dio>(() => createDio(getIt<StorageService>()));
 
   // Repositories
-  getIt.registerLazySingleton<AuthRepository>(() => AuthRepository(getIt<Dio>()));
-
+  getIt.registerLazySingleton<IAuthRepository>(() => AuthRepositoryImpl(getIt<Dio>()));
+  getIt.registerLazySingleton<IAccountRepository>(() => AccountRepositoryImpl(getIt<Dio>()));
   // Services (Logic)
-  getIt.registerLazySingleton<AuthService>(() => AuthService(getIt<AuthRepository>(), getIt<StorageService>()));
+  getIt.registerLazySingleton<AuthService>(() => AuthService(getIt<IAuthRepository>(), getIt<StorageService>()));
+  getIt.registerLazySingleton<AccountService>(() => AccountService(getIt<IAccountRepository>()));
 }

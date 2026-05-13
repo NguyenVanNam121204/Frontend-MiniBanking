@@ -6,7 +6,7 @@ import 'l10n/generated/app_localizations.dart';
 import 'core/di/injection.dart';
 import 'app/locale_provider.dart';
 
-import 'views/auth/login/login_screen.dart';
+import 'views/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,7 +55,7 @@ class MyApp extends ConsumerWidget {
         ),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const SplashScreen(),
     );
   }
 }

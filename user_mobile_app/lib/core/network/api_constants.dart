@@ -14,9 +14,11 @@ class ApiConstants {
   static const String changePassword = '/users/change-password';
   static const String setupPin = '/users/setup-pin';
   static const String changePin = '/users/change-pin';
+  static const String verifyPin = '/users/verify-pin';
 
   // Accounts
   static const String accounts = '/accounts';
+  static String searchAccount(String number) => '/accounts/search/$number';
   
   // Transactions
   static const String transactions = '/transactions';

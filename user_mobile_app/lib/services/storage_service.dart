@@ -20,5 +20,12 @@ class StorageService {
   Future<void> saveUsername(String username) => _storage.write(key: _usernameKey, value: username);
   Future<String?> getUsername() => _storage.read(key: _usernameKey);
 
+  Future<void> clearTokens() async {
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+  }
+
+  Future<void> clearUsername() => _storage.delete(key: _usernameKey);
+
   Future<void> clearAll() => _storage.deleteAll();
 }

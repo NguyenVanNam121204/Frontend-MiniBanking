@@ -6,9 +6,10 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../app/providers.dart';
 import '../../../app/locale_provider.dart';
 import '../../../core/app/app_colors.dart';
-import '../widgets/auth_widgets.dart';
+import '../../../widgets/auth/auth_widgets.dart';
 import '../register/register_screen.dart';
 import '../forgot_password/forgot_password_screen.dart';
+import '../../main_layout.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -103,8 +104,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     ref.listen(loginViewModelProvider, (previous, next) {
       if (next.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login Success!')),
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainLayout()),
+          (route) => false,
         );
       }
       if (next.errorMessage != null) {

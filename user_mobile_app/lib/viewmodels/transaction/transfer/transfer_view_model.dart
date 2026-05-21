@@ -101,7 +101,11 @@ class TransferViewModel extends StateNotifier<TransferState> {
 
   void previousStep() {
     if (state.currentStep > 1) {
-      state = state.copyWith(currentStep: state.currentStep - 1);
+      state = state.copyWith(
+        currentStep: state.currentStep - 1,
+        errorMessage: null,
+        pin: '',
+      );
     }
   }
 

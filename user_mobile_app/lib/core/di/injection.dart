@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/dio_client.dart';
 import '../../services/storage_service.dart';
+import '../../services/realtime_event_service.dart';
 import '../../services/auth/auth_service.dart';
 import '../../repositories/auth/auth_repository.dart';
 import '../../repositories/auth/auth_repository_impl.dart';
@@ -16,6 +17,7 @@ Future<void> setupInjection() async {
   // Services
   getIt.registerLazySingleton<FlutterSecureStorage>(() => const FlutterSecureStorage());
   getIt.registerLazySingleton<StorageService>(() => StorageService(getIt()));
+  getIt.registerLazySingleton<RealtimeEventService>(() => RealtimeEventService(getIt<StorageService>()));
   
   // Network
   getIt.registerLazySingleton<Dio>(() => createDio(getIt<StorageService>()));

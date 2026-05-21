@@ -26,4 +26,10 @@ class ApiConstants {
   static const String withdraw = '/transactions/withdraw';
   static const String transfer = '/transactions/transfer';
   static const String history = '/transactions/history';
+
+  // Notifications
+  static const String notifications = '/notifications';
+  static String markNotificationAsRead(int id) => '/notifications/$id/read';
+  static const String markAllNotificationsAsRead = '/notifications/read-all';
+  static String deleteNotification(int id) => '/notifications/$id';
 }

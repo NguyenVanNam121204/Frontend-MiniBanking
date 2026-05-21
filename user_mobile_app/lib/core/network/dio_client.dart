@@ -4,6 +4,8 @@ import '../network/api_constants.dart';
 import '../../services/storage_service.dart';
 import 'interceptors/logging_interceptor.dart';
 
+Future<String?>? _refreshTokenFuture;
+
 Dio createDio(StorageService storageService) {
   final dio = Dio(
     BaseOptions(
@@ -25,54 +27,30 @@ Dio createDio(StorageService storageService) {
       return handler.next(options);
     },
     onError: (DioException e, handler) async {
-      if (e.response?.statusCode == 401) {
-        final refreshToken = await storageService.getRefreshToken();
-        
-        if (refreshToken != null) {
-          try {
-            // Use a separate Dio instance to avoid circular dependency and interceptor loops
-            final refreshDio = Dio(BaseOptions(
-              baseUrl: e.requestOptions.baseUrl,
-              contentType: 'application/json',
-            ));
-            
-            final response = await refreshDio.post(
-              ApiConstants.refreshToken,
-              data: {'refreshToken': refreshToken},
+      final isRefreshRequest = e.requestOptions.path == ApiConstants.refreshToken;
+      if (e.response?.statusCode == 401 && !isRefreshRequest) {
+        try {
+          _refreshTokenFuture ??= _refreshAccessToken(e.requestOptions.baseUrl, storageService);
+          final newAccessToken = await _refreshTokenFuture;
+
+          if (newAccessToken != null) {
+            final options = e.requestOptions;
+            options.headers['Authorization'] = 'Bearer $newAccessToken';
+
+            final clonedRequest = await dio.request(
+              options.path,
+              options: Options(
+                method: options.method,
+                headers: options.headers,
+              ),
+              data: options.data,
+              queryParameters: options.queryParameters,
             );
-            
-            if (response.statusCode == 200 && response.data['success'] == true) {
-              final newAccessToken = response.data['data']['accessToken'];
-              final newRefreshToken = response.data['data']['refreshToken'];
-              
-              // Save new tokens
-              await storageService.saveTokens(
-                accessToken: newAccessToken,
-                refreshToken: newRefreshToken,
-              );
-              
-              // Retry the original request with new token
-              final options = e.requestOptions;
-              options.headers['Authorization'] = 'Bearer $newAccessToken';
-              
-              final clonedRequest = await dio.request(
-                options.path,
-                options: Options(
-                  method: options.method,
-                  headers: options.headers,
-                ),
-                data: options.data,
-                queryParameters: options.queryParameters,
-              );
-              
-              return handler.resolve(clonedRequest);
-            }
-          } catch (refreshError) {
-            // Refresh token failed or expired
-            await storageService.clearTokens();
-            await storageService.clearUsername();
-            // Optional: Broadcast logout event or navigate to login
+
+            return handler.resolve(clonedRequest);
           }
+        } finally {
+          _refreshTokenFuture = null;
         }
       }
       return handler.next(e);
@@ -80,4 +58,42 @@ Dio createDio(StorageService storageService) {
   ));
 
   return dio;
+}
+
+Future<String?> _refreshAccessToken(String baseUrl, StorageService storageService) async {
+  final refreshToken = await storageService.getRefreshToken();
+  if (refreshToken == null) {
+    await storageService.clearTokens();
+    await storageService.clearUsername();
+    return null;
+  }
+
+  try {
+    final refreshDio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      contentType: 'application/json',
+    ));
+
+    final response = await refreshDio.post(
+      ApiConstants.refreshToken,
+      data: {'refreshToken': refreshToken},
+    );
+
+    if (response.statusCode == 200 && response.data['success'] == true) {
+      final newAccessToken = response.data['data']['accessToken'] as String;
+      final newRefreshToken = response.data['data']['refreshToken'] as String;
+
+      await storageService.saveTokens(
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      );
+
+      return newAccessToken;
+    }
+  } catch (_) {
+    await storageService.clearTokens();
+    await storageService.clearUsername();
+  }
+
+  return null;
 }

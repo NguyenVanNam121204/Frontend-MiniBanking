@@ -23,6 +23,12 @@ class _DepositScreenState extends ConsumerState<DepositScreen> {
   final TextEditingController _descController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _descController.text = ref.read(depositViewModelProvider).description;
+  }
+
+  @override
   void dispose() {
     _amountController.dispose();
     _descController.dispose();

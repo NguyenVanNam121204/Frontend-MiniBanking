@@ -12,8 +12,11 @@ import '../repositories/transaction/deposit/deposit_repository_impl.dart';
 import '../repositories/transaction/withdraw/withdraw_repository.dart';
 import '../repositories/transaction/withdraw/withdraw_repository_impl.dart';
 import '../services/storage_service.dart';
+import '../services/realtime_event_service.dart';
 import '../repositories/user/user_repository.dart';
 import '../repositories/user/user_repository_impl.dart';
+import '../repositories/notification/notification_repository.dart';
+import '../repositories/notification/notification_repository_impl.dart';
 
 // ViewModels
 import '../viewmodels/auth/login/login_view_model.dart';
@@ -42,6 +45,10 @@ import '../viewmodels/profile/profile_state.dart';
 import '../viewmodels/profile/profile_view_model.dart';
 import '../viewmodels/profile/security_state.dart';
 import '../viewmodels/profile/security_view_model.dart';
+import '../viewmodels/qr_pay/qr_pay_state.dart';
+import '../viewmodels/qr_pay/qr_pay_view_model.dart';
+import '../viewmodels/notification/notification_state.dart';
+import '../viewmodels/notification/notification_view_model.dart';
 
 // -- Infrastructure Providers --
 
@@ -51,6 +58,10 @@ final dioProvider = Provider<Dio>((ref) {
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return getIt<StorageService>();
+});
+
+final realtimeEventServiceProvider = Provider<RealtimeEventService>((ref) {
+  return getIt<RealtimeEventService>();
 });
 
 // -- Repository Providers --
@@ -77,9 +88,10 @@ final accountServiceProvider = Provider<AccountService>((ref) {
   return getIt<AccountService>();
 });
 
-final transactionHistoryRepositoryProvider = Provider<ITransactionHistoryRepository>((ref) {
-  return TransactionHistoryRepositoryImpl(ref.watch(dioProvider));
-});
+final transactionHistoryRepositoryProvider =
+    Provider<ITransactionHistoryRepository>((ref) {
+      return TransactionHistoryRepositoryImpl(ref.watch(dioProvider));
+    });
 
 final depositRepositoryProvider = Provider<IDepositRepository>((ref) {
   return DepositRepositoryImpl(ref.watch(dioProvider));
@@ -89,25 +101,35 @@ final withdrawRepositoryProvider = Provider<IWithdrawRepository>((ref) {
   return WithdrawRepositoryImpl(ref.watch(dioProvider));
 });
 
+final notificationRepositoryProvider = Provider<INotificationRepository>((ref) {
+  return NotificationRepositoryImpl(ref.watch(dioProvider));
+});
+
 // -- ViewModel Providers --
 
-final loginViewModelProvider = StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
-  return LoginViewModel(ref.watch(authServiceProvider));
-});
+final loginViewModelProvider =
+    StateNotifierProvider.autoDispose<LoginViewModel, LoginState>((ref) {
+      return LoginViewModel(ref.watch(authServiceProvider));
+    });
 
-final registerViewModelProvider = StateNotifierProvider.autoDispose<RegisterViewModel, RegisterState>((ref) {
-  return RegisterViewModel(ref.watch(authServiceProvider));
-});
+final registerViewModelProvider =
+    StateNotifierProvider.autoDispose<RegisterViewModel, RegisterState>((ref) {
+      return RegisterViewModel(ref.watch(authServiceProvider));
+    });
 
-final verifyOtpViewModelProvider = StateNotifierProvider<VerifyOtpViewModel, VerifyOtpState>((ref) {
-  return VerifyOtpViewModel(ref.watch(authServiceProvider));
-});
+final verifyOtpViewModelProvider =
+    StateNotifierProvider<VerifyOtpViewModel, VerifyOtpState>((ref) {
+      return VerifyOtpViewModel(ref.watch(authServiceProvider));
+    });
 
-final forgotPasswordViewModelProvider = StateNotifierProvider<ForgotPasswordViewModel, ForgotPasswordState>((ref) {
-  return ForgotPasswordViewModel(ref.watch(authServiceProvider));
-});
+final forgotPasswordViewModelProvider =
+    StateNotifierProvider<ForgotPasswordViewModel, ForgotPasswordState>((ref) {
+      return ForgotPasswordViewModel(ref.watch(authServiceProvider));
+    });
 
-final homeViewModelProvider = StateNotifierProvider<HomeViewModel, HomeState>((ref) {
+final homeViewModelProvider = StateNotifierProvider<HomeViewModel, HomeState>((
+  ref,
+) {
   return HomeViewModel(
     ref.watch(accountServiceProvider),
     ref.watch(storageServiceProvider),
@@ -115,48 +137,71 @@ final homeViewModelProvider = StateNotifierProvider<HomeViewModel, HomeState>((r
   );
 });
 
-final openAccountViewModelProvider = StateNotifierProvider<OpenAccountViewModel, OpenAccountState>((ref) {
-  return OpenAccountViewModel(getIt<IAccountRepository>());
-});
+final openAccountViewModelProvider =
+    StateNotifierProvider<OpenAccountViewModel, OpenAccountState>((ref) {
+      return OpenAccountViewModel(getIt<IAccountRepository>());
+    });
 
 final transferRepositoryProvider = Provider<ITransferRepository>((ref) {
   return TransferRepositoryImpl(ref.watch(dioProvider));
 });
 
-final transferViewModelProvider = StateNotifierProvider.autoDispose<TransferViewModel, TransferState>((ref) {
-  return TransferViewModel(
-    ref.watch(accountServiceProvider),
-    ref.watch(transferRepositoryProvider),
-  );
-});
+final transferViewModelProvider =
+    StateNotifierProvider.autoDispose<TransferViewModel, TransferState>((ref) {
+      return TransferViewModel(
+        ref.watch(accountServiceProvider),
+        ref.watch(transferRepositoryProvider),
+      );
+    });
 
-final depositViewModelProvider = StateNotifierProvider.autoDispose<DepositViewModel, DepositState>((ref) {
-  return DepositViewModel(
-    ref.watch(accountServiceProvider),
-    ref.watch(depositRepositoryProvider),
-  );
-});
+final depositViewModelProvider =
+    StateNotifierProvider.autoDispose<DepositViewModel, DepositState>((ref) {
+      return DepositViewModel(
+        ref.watch(accountServiceProvider),
+        ref.watch(depositRepositoryProvider),
+      );
+    });
 
-final withdrawViewModelProvider = StateNotifierProvider.autoDispose<WithdrawViewModel, WithdrawState>((ref) {
-  return WithdrawViewModel(
-    ref.watch(accountServiceProvider),
-    ref.watch(withdrawRepositoryProvider),
-  );
-});
+final withdrawViewModelProvider =
+    StateNotifierProvider.autoDispose<WithdrawViewModel, WithdrawState>((ref) {
+      return WithdrawViewModel(
+        ref.watch(accountServiceProvider),
+        ref.watch(withdrawRepositoryProvider),
+      );
+    });
 
-final transactionHistoryViewModelProvider = StateNotifierProvider.autoDispose<TransactionHistoryViewModel, TransactionHistoryState>((ref) {
-  return TransactionHistoryViewModel(
-    ref.watch(transactionHistoryRepositoryProvider),
-    ref.watch(accountServiceProvider),
-  );
-});
+final transactionHistoryViewModelProvider =
+    StateNotifierProvider.autoDispose<
+      TransactionHistoryViewModel,
+      TransactionHistoryState
+    >((ref) {
+      return TransactionHistoryViewModel(
+        ref.watch(transactionHistoryRepositoryProvider),
+        ref.watch(accountServiceProvider),
+      );
+    });
 
-final profileViewModelProvider = StateNotifierProvider<ProfileViewModel, ProfileState>((ref) {
-  return ProfileViewModel(ref.watch(userRepositoryProvider));
-});
+final profileViewModelProvider =
+    StateNotifierProvider<ProfileViewModel, ProfileState>((ref) {
+      return ProfileViewModel(ref.watch(userRepositoryProvider));
+    });
 
-final securityViewModelProvider = StateNotifierProvider.autoDispose<SecurityViewModel, SecurityState>((ref) {
-  return SecurityViewModel(ref.watch(userRepositoryProvider));
-});
+final securityViewModelProvider =
+    StateNotifierProvider.autoDispose<SecurityViewModel, SecurityState>((ref) {
+      return SecurityViewModel(ref.watch(userRepositoryProvider));
+    });
+
+final qrPayViewModelProvider =
+    StateNotifierProvider.autoDispose<QrPayViewModel, QrPayState>((ref) {
+      return QrPayViewModel(
+        ref.watch(accountServiceProvider),
+        ref.watch(transferRepositoryProvider),
+      );
+    });
+
+final notificationViewModelProvider =
+    StateNotifierProvider<NotificationViewModel, NotificationState>((ref) {
+      return NotificationViewModel(ref.watch(notificationRepositoryProvider));
+    });
 
 final navigationIndexProvider = StateProvider<int>((ref) => 0);

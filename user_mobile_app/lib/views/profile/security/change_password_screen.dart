@@ -9,7 +9,8 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
 
   @override
-  ConsumerState<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() =>
+      _ChangePasswordScreenState();
 }
 
 class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
@@ -29,14 +30,23 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(securityViewModelProvider.notifier).changePassword(
+    final success = await ref
+        .read(securityViewModelProvider.notifier)
+        .changePassword(
           _oldPasswordController.text,
           _newPasswordController.text,
         );
 
     if (success && mounted) {
+      await ref.read(notificationViewModelProvider.notifier).refresh();
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Đổi mật khẩu thành công"), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text("Đổi mật khẩu thành công"),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pop(context);
     }
@@ -52,7 +62,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -74,7 +88,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             children: [
               Text(
                 "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ cái và số.",
-                style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 14),
+                style: GoogleFonts.inter(
+                  color: AppColors.slate400,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 32),
               SecurityField(
@@ -82,7 +99,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 hint: "Nhập mật khẩu cũ",
                 controller: _oldPasswordController,
                 isPassword: true,
-                validator: (v) => v == null || v.isEmpty ? "Vui lòng nhập mật khẩu cũ" : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? "Vui lòng nhập mật khẩu cũ" : null,
               ),
               const SizedBox(height: 24),
               SecurityField(
@@ -91,8 +109,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 controller: _newPasswordController,
                 isPassword: true,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return "Vui lòng nhập mật khẩu mới";
-                  if (v.length < 8) return "Mật khẩu phải từ 8 ký tự";
+                  if (v == null || v.isEmpty) {
+                    return "Vui lòng nhập mật khẩu mới";
+                  }
+                  if (v.length < 8) {
+                    return "Mật khẩu phải từ 8 ký tự";
+                  }
                   return null;
                 },
               ),
@@ -103,8 +125,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 controller: _confirmPasswordController,
                 isPassword: true,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return "Vui lòng xác nhận mật khẩu";
-                  if (v != _newPasswordController.text) return "Mật khẩu xác nhận không trùng khớp";
+                  if (v == null || v.isEmpty) {
+                    return "Vui lòng xác nhận mật khẩu";
+                  }
+                  if (v != _newPasswordController.text) {
+                    return "Mật khẩu xác nhận không trùng khớp";
+                  }
                   return null;
                 },
               ),
@@ -112,15 +138,24 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               if (state.errorMessage != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 24),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.redAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -143,13 +178,18 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: state.isLoading
                       ? const CircularProgressIndicator(color: Colors.black)
                       : Text(
                           "Cập nhật mật khẩu",
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),

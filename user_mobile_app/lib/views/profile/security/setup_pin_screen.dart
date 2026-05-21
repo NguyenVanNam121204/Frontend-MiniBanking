@@ -38,12 +38,21 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
       return;
     }
 
-    final success = await ref.read(securityViewModelProvider.notifier).setupPin(pin);
+    final success = await ref
+        .read(securityViewModelProvider.notifier)
+        .setupPin(pin);
 
     if (success && mounted) {
       ref.read(profileViewModelProvider.notifier).refresh();
+      await ref.read(notificationViewModelProvider.notifier).refresh();
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Thiết lập mã PIN thành công"), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text("Thiết lập mã PIN thành công"),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pop(context);
     }
@@ -52,11 +61,15 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(securityViewModelProvider);
-    
+
     final defaultPinTheme = PinTheme(
       width: 56,
       height: 56,
-      textStyle: GoogleFonts.outfit(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+      textStyle: GoogleFonts.outfit(
+        fontSize: 24,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
@@ -70,7 +83,11 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -85,17 +102,25 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
                 color: AppColors.accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_outline, color: AppColors.accent, size: 40),
+              child: const Icon(
+                Icons.lock_outline,
+                color: AppColors.accent,
+                size: 40,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
               _isConfirmStage ? "Xác nhận mã PIN" : "Thiết lập mã PIN",
-              style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+              style: GoogleFonts.outfit(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
-              _isConfirmStage 
-                  ? "Nhập lại mã PIN 6 số để xác nhận" 
+              _isConfirmStage
+                  ? "Nhập lại mã PIN 6 số để xác nhận"
                   : "Thiết lập mã PIN 6 số để bảo mật giao dịch của bạn",
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 16),
@@ -118,15 +143,24 @@ class _SetupPinScreenState extends ConsumerState<SetupPinScreen> {
             if (state.errorMessage != null)
               Container(
                 margin: const EdgeInsets.only(top: 24),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.redAccent,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(

@@ -12,9 +12,9 @@ class HomeViewModel extends StateNotifier<HomeState> {
   final ITransactionHistoryRepository _transactionRepository;
 
   HomeViewModel(
-    this._accountService, 
+    this._accountService,
     this._storageService,
-    this._transactionRepository
+    this._transactionRepository,
   ) : super(const HomeState()) {
     _init();
   }
@@ -25,15 +25,15 @@ class HomeViewModel extends StateNotifier<HomeState> {
     fetchData();
   }
 
-  Future<void> fetchData() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+  Future<void> fetchData({bool silent = false}) async {
+    state = state.copyWith(isLoading: !silent, errorMessage: null);
     try {
       // 1. Get Accounts
       final accounts = await _accountService.getMyAccounts();
-      
+
       double personalSum = 0;
       double businessSum = 0;
-      
+
       for (var acc in accounts) {
         if (acc.type == AccountType.business) {
           businessSum += acc.balance;
@@ -41,7 +41,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
           personalSum += acc.balance;
         }
       }
-      
+
       state = state.copyWith(
         accounts: List.from(accounts),
         personalBalance: personalSum,
@@ -52,17 +52,15 @@ class HomeViewModel extends StateNotifier<HomeState> {
       // 2. Get history for the first account if it exists
       if (accounts.isNotEmpty) {
         try {
-          final transactions = await _transactionRepository.getTransactionHistory(
-            accounts.first.id, 
-            size: 5
-          );
+          final transactions = await _transactionRepository
+              .getTransactionHistory(accounts.first.id, size: 5);
           state = state.copyWith(recentTransactions: transactions);
         } catch (e) {
           log('Error fetching transactions: $e');
           // Don't set global error if only transactions fail
         }
       }
-      
+
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(

@@ -1,49 +1,94 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../core/app/app_colors.dart';
-import 'home/home_screen.dart';
-import 'transaction/history/transaction_history_screen.dart';
-import 'profile/profile_screen.dart';
-import '../app/providers.dart';
 
-class MainLayout extends ConsumerWidget {
+import '../app/providers.dart';
+import '../core/app/app_colors.dart';
+import '../models/notification/app_notification_model.dart';
+import '../services/realtime_event_service.dart';
+import 'home/home_screen.dart';
+import 'profile/profile_screen.dart';
+import 'qr_pay/qr_pay_screen.dart';
+import 'transaction/history/transaction_history_screen.dart';
+
+class MainLayout extends ConsumerStatefulWidget {
   const MainLayout({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends ConsumerState<MainLayout> {
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
+  Timer? _fallbackRefreshTimer;
+  final List<Timer> _realtimeRefreshTimers = [];
+  bool _isFallbackRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      final realtimeService = ref.read(realtimeEventServiceProvider);
+      _realtimeSubscription = realtimeService.events.listen(
+        _handleRealtimeEvent,
+      );
+      await realtimeService.startUserStream();
+      _startFallbackRefresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _realtimeRefreshTimers) {
+      timer.cancel();
+    }
+    _realtimeRefreshTimers.clear();
+    _fallbackRefreshTimer?.cancel();
+    _realtimeSubscription?.cancel();
+    ref.read(realtimeEventServiceProvider).stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentIndex = ref.watch(navigationIndexProvider);
 
     final screens = [
       const HomeScreen(),
       const TransactionHistoryScreen(isTab: true),
-      const Scaffold(body: Center(child: Text("Notifications", style: TextStyle(color: Colors.white)))),
+      const QrPayScreen(),
       const ProfileScreen(),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.bgDark,
-      body: IndexedStack(
-        index: currentIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.bgDark,
           border: Border(
-            top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1),
+            top: BorderSide(
+              color: Colors.white.withValues(alpha: 0.05),
+              width: 1,
+            ),
           ),
         ),
         child: BottomNavigationBar(
           currentIndex: currentIndex,
-          onTap: (index) => ref.read(navigationIndexProvider.notifier).state = index,
+          onTap: (index) =>
+              ref.read(navigationIndexProvider.notifier).state = index,
           backgroundColor: AppColors.bgDark,
           selectedItemColor: AppColors.accent,
           unselectedItemColor: AppColors.slate400,
           type: BottomNavigationBarType.fixed,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          selectedLabelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
           unselectedLabelStyle: const TextStyle(fontSize: 12),
           items: const [
             BottomNavigationBarItem(
@@ -57,9 +102,9 @@ class MainLayout extends ConsumerWidget {
               label: 'Giao dịch',
             ),
             BottomNavigationBarItem(
-              icon: Icon(LucideIcons.bell, size: 24),
-              activeIcon: Icon(LucideIcons.bell, size: 24),
-              label: 'Thông báo',
+              icon: Icon(LucideIcons.qrCode, size: 24),
+              activeIcon: Icon(LucideIcons.qrCode, size: 24),
+              label: 'QR Pay',
             ),
             BottomNavigationBarItem(
               icon: Icon(LucideIcons.user, size: 24),
@@ -70,5 +115,81 @@ class MainLayout extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleRealtimeEvent(RealtimeEvent event) async {
+    switch (event.eventType) {
+      case 'CONNECTED':
+        await _refreshRealtimeState(includeBalance: true);
+        break;
+      case 'USER_NOTIFICATION_CREATED':
+        final notification = _applyRealtimeNotification(event);
+        if (notification?.type == AppNotificationType.transaction) {
+          _scheduleRealtimeRefreshes(includeBalance: true);
+        }
+        break;
+      case 'ACCOUNT_BALANCE_UPDATED':
+        _scheduleRealtimeRefreshes(includeBalance: true);
+        break;
+      default:
+        break;
+    }
+  }
+
+  AppNotificationModel? _applyRealtimeNotification(RealtimeEvent event) {
+    try {
+      final notification = AppNotificationModel.fromJson(event.data);
+      ref
+          .read(notificationViewModelProvider.notifier)
+          .applyRealtimeNotification(notification);
+      return notification;
+    } catch (_) {
+      ref.read(notificationViewModelProvider.notifier).refresh();
+      return null;
+    }
+  }
+
+  void _scheduleRealtimeRefreshes({required bool includeBalance}) {
+    unawaited(_refreshRealtimeState(includeBalance: includeBalance));
+
+    for (final delay in const [
+      Duration(milliseconds: 700),
+      Duration(seconds: 2),
+    ]) {
+      late final Timer timer;
+      timer = Timer(delay, () {
+        _realtimeRefreshTimers.remove(timer);
+        if (!mounted) {
+          return;
+        }
+        unawaited(_refreshRealtimeState(includeBalance: includeBalance));
+      });
+      _realtimeRefreshTimers.add(timer);
+    }
+  }
+
+  Future<void> _refreshRealtimeState({required bool includeBalance}) async {
+    if (!mounted) {
+      return;
+    }
+
+    await Future.wait([
+      if (includeBalance)
+        ref.read(homeViewModelProvider.notifier).fetchData(silent: true),
+      ref.read(notificationViewModelProvider.notifier).refresh(),
+    ]);
+  }
+
+  void _startFallbackRefresh() {
+    _fallbackRefreshTimer?.cancel();
+    _fallbackRefreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || _isFallbackRefreshing) {
+        return;
+      }
+      _isFallbackRefreshing = true;
+      _refreshRealtimeState(includeBalance: true).whenComplete(() {
+        _isFallbackRefreshing = false;
+      });
+    });
   }
 }

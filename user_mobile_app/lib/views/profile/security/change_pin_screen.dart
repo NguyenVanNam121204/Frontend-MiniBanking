@@ -17,9 +17,8 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   final _newPinController = TextEditingController();
   final _confirmPinController = TextEditingController();
   final _confirmFocusNode = FocusNode();
-  
+
   bool _isOldPinVerified = false;
-  final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
@@ -31,7 +30,9 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   }
 
   Future<void> _handleVerifyOldPin(String pin) async {
-    final isValid = await ref.read(securityViewModelProvider.notifier).verifyPin(pin);
+    final isValid = await ref
+        .read(securityViewModelProvider.notifier)
+        .verifyPin(pin);
     if (isValid && mounted) {
       setState(() => _isOldPinVerified = true);
     } else {
@@ -40,25 +41,32 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    if (_newPinController.text.length < 6 || _confirmPinController.text.length < 6) {
+    if (_newPinController.text.length < 6 ||
+        _confirmPinController.text.length < 6) {
       return;
     }
 
     if (_newPinController.text != _confirmPinController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mã PIN mới không khớp")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Mã PIN mới không khớp")));
       return;
     }
 
-    final success = await ref.read(securityViewModelProvider.notifier).changePin(
-          _oldPinController.text,
-          _newPinController.text,
-        );
+    final success = await ref
+        .read(securityViewModelProvider.notifier)
+        .changePin(_oldPinController.text, _newPinController.text);
 
     if (success && mounted) {
+      await ref.read(notificationViewModelProvider.notifier).refresh();
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Đổi mã PIN thành công"), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text("Đổi mã PIN thành công"),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pop(context);
     }
@@ -67,11 +75,15 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(securityViewModelProvider);
-    
+
     final defaultPinTheme = PinTheme(
       width: 48,
       height: 48,
-      textStyle: GoogleFonts.outfit(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+      textStyle: GoogleFonts.outfit(
+        fontSize: 20,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
@@ -85,12 +97,20 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Đổi mã PIN",
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
       ),
@@ -106,29 +126,44 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
                   color: AppColors.accent.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.shield_outlined, color: AppColors.accent, size: 40),
+                child: const Icon(
+                  Icons.shield_outlined,
+                  color: AppColors.accent,
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 24),
-              
+
               if (!_isOldPinVerified) ...[
                 Text(
                   "Nhập mã PIN cũ",
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   "Vui lòng nhập mã PIN hiện tại của bạn để tiếp tục",
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 16),
+                  style: GoogleFonts.inter(
+                    color: AppColors.slate400,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 40),
                 Pinput(
                   length: 6,
                   controller: _oldPinController,
                   obscureText: true,
-                  defaultPinTheme: defaultPinTheme.copyWith(width: 54, height: 54),
+                  defaultPinTheme: defaultPinTheme.copyWith(
+                    width: 54,
+                    height: 54,
+                  ),
                   focusedPinTheme: defaultPinTheme.copyWith(
-                    width: 54, height: 54,
+                    width: 54,
+                    height: 54,
                     decoration: defaultPinTheme.decoration!.copyWith(
                       border: Border.all(color: AppColors.accent),
                     ),
@@ -139,22 +174,33 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
               ] else ...[
                 Text(
                   "Thiết lập mã PIN mới",
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   "Vui lòng nhập mã PIN mới và xác nhận lại",
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 16),
+                  style: GoogleFonts.inter(
+                    color: AppColors.slate400,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // New PIN
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Mã PIN mới",
-                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14),
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -176,15 +222,19 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
                   },
                   autofocus: true,
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Confirm PIN
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Xác nhận mã PIN mới",
-                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14),
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -201,14 +251,16 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: (_newPinController.text.length == 6 && _confirmPinController.text.length == 6)
+                    onPressed:
+                        (_newPinController.text.length == 6 &&
+                            _confirmPinController.text.length == 6)
                         ? _handleSubmit
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -216,18 +268,23 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
                       foregroundColor: Colors.black,
                       disabledBackgroundColor: AppColors.slate800,
                       disabledForegroundColor: AppColors.slate600,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 0,
                     ),
-                    child: state.isLoading 
-                      ? const CircularProgressIndicator(color: Colors.black)
-                      : Text(
-                          "Cập nhật mã PIN",
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
+                    child: state.isLoading
+                        ? const CircularProgressIndicator(color: Colors.black)
+                        : Text(
+                            "Cập nhật mã PIN",
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                   ),
                 ),
-                
+
                 TextButton(
                   onPressed: () => setState(() {
                     _isOldPinVerified = false;
@@ -237,7 +294,10 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
                   }),
                   child: Text(
                     "Quay lại nhập mã cũ",
-                    style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 14),
+                    style: GoogleFonts.inter(
+                      color: AppColors.slate400,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],
@@ -245,15 +305,24 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
               if (state.errorMessage != null)
                 Container(
                   margin: const EdgeInsets.only(top: 24),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.redAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: 20,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(

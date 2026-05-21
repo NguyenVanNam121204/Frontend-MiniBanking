@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../app/providers.dart';
 import '../../../core/app/app_colors.dart';
+import '../../../models/account/account_model.dart';
+import '../../../models/transaction/transaction_model.dart';
 import '../../../viewmodels/transaction/transfer/transfer_state.dart';
 import '../../../viewmodels/transaction/transfer/transfer_view_model.dart';
-import '../../../models/account/account_model.dart';
 import '../../../widgets/transaction/account_selector.dart';
 import '../../../widgets/transaction/currency_input_field.dart';
 import '../../../widgets/transaction/numeric_keypad.dart';
@@ -25,6 +27,12 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   final TextEditingController _recipientController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _descController.text = ref.read(transferViewModelProvider).description;
+  }
 
   @override
   void dispose() {
@@ -58,7 +66,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             },
           ),
           title: Text(
-            state.currentStep == 4 ? "Giao dịch thành công" : "Chuyển tiền",
+            _getScreenTitle(state),
             style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
@@ -70,11 +78,16 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
 
   Widget _buildBody(TransferState state, TransferViewModel viewModel, NumberFormat format) {
     switch (state.currentStep) {
-      case 1: return _buildInputStep(state, viewModel);
-      case 2: return _buildConfirmStep(state, viewModel, format);
-      case 3: return _buildPinStep(state, viewModel);
-      case 4: return _buildSuccessStep(state, viewModel, format);
-      default: return const SizedBox.shrink();
+      case 1:
+        return _buildInputStep(state, viewModel);
+      case 2:
+        return _buildConfirmStep(state, viewModel, format);
+      case 3:
+        return _buildPinStep(state, viewModel);
+      case 4:
+        return _buildResultStep(state, viewModel, format);
+      default:
+        return const SizedBox.shrink();
     }
   }
 
@@ -84,51 +97,46 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle("Từ tài khoản"),
+          _buildSectionTitle('Từ tài khoản'),
           const SizedBox(height: 12),
           AccountSelector(
             selectedAccount: state.selectedSourceAccount,
             accounts: state.myAccounts,
-            label: "Chọn tài khoản nguồn",
+            label: 'Chọn tài khoản nguồn',
             onAccountSelected: viewModel.selectSourceAccount,
           ),
-          
           const SizedBox(height: 32),
-          _buildSectionTitle("Đến tài khoản"),
+          _buildSectionTitle('Đến tài khoản'),
           const SizedBox(height: 12),
           _buildRecipientInput(state, viewModel),
-          
           if (state.recipientAccount != null) ...[
             const SizedBox(height: 12),
             _buildRecipientInfo(state.recipientAccount!),
           ],
-
           const SizedBox(height: 32),
           CurrencyInputField(
             controller: _amountController,
-            label: "Số tiền chuyển",
+            label: 'Số tiền chuyển',
             onChanged: (val) => viewModel.setAmount(double.tryParse(val.replaceAll('.', '')) ?? 0),
             errorText: (state.amount > 0 && state.amount < 10000)
-              ? "Số tiền tối thiểu là 10.000đ"
-              : (state.amount > (state.selectedSourceAccount?.balance ?? 0))
-                ? "Số dư không đủ"
-                : null,
+                ? 'Số tiền tối thiểu là 10.000đ'
+                : (state.amount > (state.selectedSourceAccount?.balance ?? 0))
+                    ? 'Số dư không đủ'
+                    : null,
           ),
-
           const SizedBox(height: 32),
-          _buildSectionTitle("Nội dung (Tùy chọn)"),
+          _buildSectionTitle('Nội dung (Tùy chọn)'),
           const SizedBox(height: 12),
           _buildDescriptionInput(viewModel),
-
           const SizedBox(height: 48),
           _buildMainButton(
-            "Tiếp tục", 
-            onTap: (state.recipientAccount != null && 
-                    state.amount >= 10000 && 
+            'Tiếp tục',
+            onTap: (state.recipientAccount != null &&
+                    state.amount >= 10000 &&
                     state.amount <= (state.selectedSourceAccount?.balance ?? 0) &&
-                    state.recipientAccount!.accountNumber != state.selectedSourceAccount?.accountNumber) 
-              ? () => viewModel.nextStep() 
-              : null,
+                    state.recipientAccount!.accountNumber != state.selectedSourceAccount?.accountNumber)
+                ? viewModel.nextStep
+                : null,
           ),
         ],
       ),
@@ -147,10 +155,12 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   }
 
   Widget _buildRecipientInput(TransferState state, TransferViewModel viewModel) {
-    final bool isSameAccount = state.recipientAccount != null && 
-                               state.selectedSourceAccount != null && 
-                               state.recipientAccount!.accountNumber == state.selectedSourceAccount!.accountNumber;
-    final String? displayError = isSameAccount ? "Không thể chuyển tiền cho chính tài khoản này" : (state.currentStep == 1 ? state.errorMessage : null);
+    final bool isSameAccount = state.recipientAccount != null &&
+        state.selectedSourceAccount != null &&
+        state.recipientAccount!.accountNumber == state.selectedSourceAccount!.accountNumber;
+    final String? displayError = isSameAccount
+        ? 'Không thể chuyển tiền cho chính tài khoản này'
+        : (state.currentStep == 1 ? state.errorMessage : null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +170,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
           onChanged: viewModel.searchRecipient,
           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
-            hintText: "Nhập số tài khoản",
+            hintText: 'Nhập số tài khoản',
             hintStyle: GoogleFonts.inter(color: AppColors.slate600),
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.05),
@@ -169,32 +179,30 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
                 color: displayError != null
-                  ? Colors.redAccent.withValues(alpha: 0.5) 
-                  : Colors.white.withValues(alpha: 0.1),
+                    ? Colors.redAccent.withValues(alpha: 0.5)
+                    : Colors.white.withValues(alpha: 0.1),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: displayError != null
-                  ? Colors.redAccent 
-                  : AppColors.accent, 
+                color: displayError != null ? Colors.redAccent : AppColors.accent,
                 width: 1.5,
               ),
             ),
-            suffixIcon: state.isSearchingRecipient 
-              ? Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: SizedBox(
-                    width: 20, 
-                    height: 20, 
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2, 
-                      color: AppColors.accent.withValues(alpha: 0.8)
-                    )
-                  ),
-                )
-              : null,
+            suffixIcon: state.isSearchingRecipient
+                ? Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.accent.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  )
+                : null,
           ),
         ),
         if (displayError != null)
@@ -207,7 +215,11 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                 Expanded(
                   child: Text(
                     displayError,
-                    style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w500),
+                    style: GoogleFonts.inter(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
@@ -236,11 +248,11 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                account.ownerName?.toUpperCase() ?? "KHÁCH HÀNG",
+                account.ownerName?.toUpperCase() ?? 'KHÁCH HÀNG',
                 style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               Text(
-                "Ngân hàng ABC",
+                'Ngân hàng ABC',
                 style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 12),
               ),
             ],
@@ -256,7 +268,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       onChanged: viewModel.setDescription,
       style: GoogleFonts.inter(color: Colors.white),
       decoration: InputDecoration(
-        hintText: "Nội dung chuyển khoản",
+        hintText: 'Nội dung chuyển khoản',
         hintStyle: GoogleFonts.inter(color: AppColors.slate600),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
@@ -282,21 +294,30 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             ),
             child: Column(
               children: [
-                TransactionConfirmRow(label: "Từ tài khoản", value: state.selectedSourceAccount?.accountNumber ?? ""),
-                TransactionConfirmRow(label: "Tên người gửi", value: state.selectedSourceAccount?.ownerName?.toUpperCase() ?? ""),
+                TransactionConfirmRow(label: 'Từ tài khoản', value: state.selectedSourceAccount?.accountNumber ?? ''),
+                TransactionConfirmRow(
+                  label: 'Tên người gửi',
+                  value: state.selectedSourceAccount?.ownerName?.toUpperCase() ?? '',
+                ),
                 const Divider(color: Colors.white10, height: 32),
-                TransactionConfirmRow(label: "Đến tài khoản", value: state.recipientAccount?.accountNumber ?? ""),
-                TransactionConfirmRow(label: "Tên người nhận", value: state.recipientAccount?.ownerName?.toUpperCase() ?? ""),
+                TransactionConfirmRow(label: 'Đến tài khoản', value: state.recipientAccount?.accountNumber ?? ''),
+                TransactionConfirmRow(
+                  label: 'Tên người nhận',
+                  value: state.recipientAccount?.ownerName?.toUpperCase() ?? '',
+                ),
                 const Divider(color: Colors.white10, height: 32),
-                TransactionConfirmRow(label: "Số tiền", value: format.format(state.amount), isBold: true),
-                TransactionConfirmRow(label: "Nội dung", value: state.description.isEmpty ? "Chuyển tiền" : state.description),
+                TransactionConfirmRow(label: 'Số tiền', value: format.format(state.amount), isBold: true),
+                TransactionConfirmRow(
+                  label: 'Nội dung',
+                  value: state.description.isEmpty ? 'Chuyển tiền' : state.description,
+                ),
                 const Divider(color: Colors.white10, height: 32),
-                TransactionConfirmRow(label: "Phí giao dịch", value: "Miễn phí", color: Colors.greenAccent),
+                TransactionConfirmRow(label: 'Phí giao dịch', value: 'Miễn phí', color: Colors.greenAccent),
               ],
             ),
           ),
           const Spacer(),
-          _buildMainButton("Xác nhận", onTap: () => viewModel.nextStep()),
+          _buildMainButton('Xác nhận', onTap: viewModel.nextStep),
         ],
       ),
     );
@@ -305,68 +326,97 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   Widget _buildPinStep(TransferState state, TransferViewModel viewModel) {
     return Column(
       children: [
-        const SizedBox(height: 48),
-        Text(
-          "Xác nhận mã PIN",
-          style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        const SizedBox(height: 48),
-        PinDots(length: state.pin.length),
-        const Spacer(),
-        if (state.errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Text(
-              state.errorMessage!,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13),
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: state.isLoading ? null : viewModel.previousStep,
+            child: Column(
+              children: [
+                const SizedBox(height: 48),
+                Text(
+                  'Xác nhận mã PIN',
+                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 48),
+                PinDots(length: state.pin.length),
+                const Spacer(),
+                if (state.errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    child: Text(
+                      state.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13),
+                    ),
+                  ),
+                if (state.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: CircularProgressIndicator(color: AppColors.accent),
+                  ),
+              ],
             ),
           ),
-        if (state.isLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: CircularProgressIndicator(color: AppColors.accent),
-          ),
-        // Custom Keypad
+        ),
         if (!state.isLocked)
           NumericKeypad(
-            onDigitPressed: viewModel.updatePin,
-            onDeletePressed: viewModel.deleteLastPin,
+            onDigitPressed: state.isLoading ? (_) {} : viewModel.updatePin,
+            onDeletePressed: state.isLoading ? () {} : viewModel.deleteLastPin,
           )
         else
           Padding(
             padding: const EdgeInsets.all(32),
             child: _buildMainButton(
-              "Liên hệ hỗ trợ", 
-              onTap: () {
-                // In reality, this would open phone dialer or chat
-              },
+              'Liên hệ hỗ trợ',
+              onTap: () {},
             ),
           ),
       ],
     );
   }
 
-  Widget _buildSuccessStep(TransferState state, TransferViewModel viewModel, NumberFormat format) {
+  Widget _buildResultStep(TransferState state, TransferViewModel viewModel, NumberFormat format) {
+    final bool isPending = _isPendingTransfer(state);
+    final Color accentColor = isPending ? Colors.orangeAccent : AppColors.accent;
+    final Color iconBackground = isPending ? Colors.orangeAccent : Colors.greenAccent;
+    final IconData statusIcon = isPending ? LucideIcons.clock3 : LucideIcons.check;
+    final String headline = isPending ? 'Yêu cầu đang chờ duyệt' : 'Giao dịch thành công';
+    final String statusValue = isPending ? 'Chờ admin duyệt' : 'Thành công';
+    final String supportText = isPending
+        ? 'Khoản chuyển tiền này vượt hạn mức 10.000.000đ nên cần admin phê duyệt. Bạn sẽ nhận thông báo ngay khi có kết quả.'
+        : '';
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
           const SizedBox(height: 48),
-          const CircleAvatar(
+          CircleAvatar(
             radius: 40,
-            backgroundColor: Colors.greenAccent,
-            child: Icon(LucideIcons.check, color: Colors.black, size: 40),
+            backgroundColor: iconBackground,
+            child: Icon(statusIcon, color: Colors.black, size: 36),
           ),
           const SizedBox(height: 24),
           Text(
-            "Giao dịch thành công",
+            headline,
             style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           Text(
             format.format(state.amount),
-            style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.accent),
+            style: GoogleFonts.outfit(fontSize: 36, fontWeight: FontWeight.bold, color: accentColor),
           ),
+          if (supportText.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              supportText,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: AppColors.slate400,
+                height: 1.5,
+              ),
+            ),
+          ],
           const SizedBox(height: 48),
           Container(
             padding: const EdgeInsets.all(24),
@@ -376,18 +426,33 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             ),
             child: Column(
               children: [
-                TransactionConfirmRow(label: "Mã giao dịch", value: "#${state.successTransaction?.id ?? '123456'}"),
-                TransactionConfirmRow(label: "Thời gian", value: DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())),
-                TransactionConfirmRow(label: "Người thụ hưởng", value: state.recipientAccount?.ownerName?.toUpperCase() ?? ""),
-                TransactionConfirmRow(label: "Nội dung", value: state.description.isEmpty ? "Chuyển tiền" : state.description),
+                TransactionConfirmRow(label: 'Mã giao dịch', value: '#${state.successTransaction?.id ?? '123456'}'),
+                TransactionConfirmRow(
+                  label: 'Thời gian',
+                  value: DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+                ),
+                TransactionConfirmRow(
+                  label: 'Trạng thái',
+                  value: statusValue,
+                  color: isPending ? Colors.orangeAccent : Colors.greenAccent,
+                ),
+                TransactionConfirmRow(
+                  label: 'Người thụ hưởng',
+                  value: state.recipientAccount?.ownerName?.toUpperCase() ?? '',
+                ),
+                TransactionConfirmRow(
+                  label: 'Nội dung',
+                  value: state.description.isEmpty ? 'Chuyển tiền' : state.description,
+                ),
               ],
             ),
           ),
           const Spacer(),
-          _buildMainButton("Về trang chủ", onTap: () {
-             viewModel.reset();
-             ref.read(homeViewModelProvider.notifier).fetchData(); // Refresh balances
-             Navigator.pop(context);
+          _buildMainButton('Về trang chủ', onTap: () {
+            viewModel.reset();
+            ref.read(homeViewModelProvider.notifier).fetchData();
+            ref.read(notificationViewModelProvider.notifier).refresh();
+            Navigator.pop(context);
           }),
         ],
       ),
@@ -415,5 +480,16 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
         ),
       ),
     );
+  }
+
+  String _getScreenTitle(TransferState state) {
+    if (state.currentStep != 4) {
+      return 'Chuyển tiền';
+    }
+    return _isPendingTransfer(state) ? 'Chờ phê duyệt' : 'Giao dịch thành công';
+  }
+
+  bool _isPendingTransfer(TransferState state) {
+    return state.successTransaction?.status == TransactionStatus.pending;
   }
 }

@@ -25,6 +25,12 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
   final TextEditingController _descController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _descController.text = ref.read(withdrawViewModelProvider).description;
+  }
+
+  @override
   void dispose() {
     _amountController.dispose();
     _descController.dispose();
@@ -169,6 +175,12 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
   Widget _buildPinStep(WithdrawState state, WithdrawViewModel viewModel) {
     return Column(
       children: [
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: state.isLoading ? null : viewModel.previousStep,
+            child: Column(
+              children: [
         const SizedBox(height: 48),
         Text(
           "Xác nhận mã PIN",
@@ -196,10 +208,14 @@ class _WithdrawScreenState extends ConsumerState<WithdrawScreen> {
             padding: EdgeInsets.symmetric(vertical: 16),
             child: CircularProgressIndicator(color: AppColors.accent),
           ),
+              ],
+            ),
+          ),
+        ),
         if (!state.isLocked)
           NumericKeypad(
-            onDigitPressed: viewModel.updatePin,
-            onDeletePressed: viewModel.deleteLastPin,
+            onDigitPressed: state.isLoading ? (_) {} : viewModel.updatePin,
+            onDeletePressed: state.isLoading ? () {} : viewModel.deleteLastPin,
           )
         else
           Padding(

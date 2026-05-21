@@ -1,41 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+import '../../app/providers.dart';
 import '../../core/app/app_colors.dart';
-import '../../viewmodels/home/home_view_model.dart';
-import '../../viewmodels/home/home_state.dart';
 import '../../models/account/account_model.dart';
 import '../../models/transaction/transaction_model.dart';
-import '../../app/providers.dart';
+import '../../viewmodels/home/home_state.dart';
+import '../../viewmodels/home/home_view_model.dart';
+import '../../viewmodels/notification/notification_state.dart';
 import '../account/open_account_screen.dart';
-import '../transaction/transfer/transfer_screen.dart';
+import '../notification/notification_screen.dart';
 import '../transaction/deposit/deposit_screen.dart';
+import '../transaction/transfer/transfer_screen.dart';
 import '../transaction/withdraw/withdraw_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(homeViewModelProvider);
-    final viewModel = ref.read(homeViewModelProvider.notifier);
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _bellAnimationController;
+  late final Animation<double> _bellRotation;
+  int _lastUnreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _bellAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 550),
+    );
+    _bellRotation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0, end: -0.12), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -0.12, end: 0.12), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 0.12, end: -0.09), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -0.09, end: 0.09), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 0.09, end: 0), weight: 1),
+        ]).animate(
+          CurvedAnimation(
+            parent: _bellAnimationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+    Future.microtask(() {
+      ref.read(homeViewModelProvider.notifier).fetchData();
+      ref.read(notificationViewModelProvider.notifier).loadNotifications();
+    });
+  }
+
+  @override
+  void dispose() {
+    _bellAnimationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final homeState = ref.watch(homeViewModelProvider);
+    final homeViewModel = ref.read(homeViewModelProvider.notifier);
+    final notificationState = ref.watch(notificationViewModelProvider);
+
+    ref.listen<NotificationState>(notificationViewModelProvider, (
+      previous,
+      next,
+    ) {
+      final previousUnread = previous?.unreadCount ?? _lastUnreadCount;
+      final nextUnread = next.unreadCount;
+      if (nextUnread > previousUnread) {
+        _bellAnimationController.forward(from: 0);
+      }
+      _lastUnreadCount = nextUnread;
+    });
 
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       body: RefreshIndicator(
-        onRefresh: () => viewModel.fetchAccounts(),
+        onRefresh: () async {
+          await homeViewModel.fetchData();
+          await ref.read(notificationViewModelProvider.notifier).refresh();
+        },
         color: AppColors.accent,
         backgroundColor: AppColors.slate800,
         child: CustomScrollView(
           slivers: [
-            _buildAppBar(context, state),
+            _buildAppBar(context, homeState, notificationState),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            _buildBalanceCard(context, state, viewModel),
+            _buildBalanceCard(context, homeState, homeViewModel),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -48,10 +110,10 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            _buildAccountsList(state),
+            _buildAccountsList(homeState),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
             _buildTransactionSectionHeader(context, ref),
-            _buildTransactionsList(state),
+            _buildTransactionsList(homeState),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
@@ -59,7 +121,22 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, HomeState state) {
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Chào buổi sáng 👋';
+    } else if (hour >= 12 && hour < 18) {
+      return 'Chào buổi chiều 👋';
+    } else {
+      return 'Chào buổi tối 👋';
+    }
+  }
+
+  Widget _buildAppBar(
+    BuildContext context,
+    HomeState state,
+    NotificationState notificationState,
+  ) {
     return SliverAppBar(
       expandedHeight: 80,
       backgroundColor: AppColors.bgDark,
@@ -77,14 +154,14 @@ class HomeScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Chào buổi sáng 👋",
+                    _getGreeting(),
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       color: AppColors.slate400,
                     ),
                   ),
                   Text(
-                    state.userName.isNotEmpty ? state.userName : "Người dùng",
+                    state.userName.isNotEmpty ? state.userName : 'Người dùng',
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -95,15 +172,79 @@ class HomeScreen extends ConsumerWidget {
               ),
               Row(
                 children: [
-                  _buildIconButton(LucideIcons.bell, () {}),
+                  _buildNotificationButton(context, notificationState),
                   const SizedBox(width: 12),
-                  _buildIconButton(LucideIcons.user, () {}),
+                  _buildProfileButton(context, state.userName),
                 ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNotificationButton(
+    BuildContext context,
+    NotificationState notificationState,
+  ) {
+    return AnimatedBuilder(
+      animation: _bellRotation,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _bellRotation.value,
+          alignment: Alignment.topCenter,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _buildIconButton(LucideIcons.bell, () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationScreen(),
+                  ),
+                );
+                if (!mounted) {
+                  return;
+                }
+                await ref
+                    .read(notificationViewModelProvider.notifier)
+                    .refresh();
+                await ref.read(homeViewModelProvider.notifier).fetchData();
+              }),
+              if (notificationState.unreadCount > 0)
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.bgDark, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        notificationState.unreadCount > 99
+                            ? '99+'
+                            : notificationState.unreadCount.toString(),
+                        style: GoogleFonts.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -121,7 +262,81 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBalanceCard(BuildContext context, HomeState state, HomeViewModel viewModel) {
+  Widget _buildProfileButton(BuildContext context, String userName) {
+    final String displayName = userName.trim().isNotEmpty
+        ? userName.trim()
+        : 'User';
+    final String initial = displayName.characters.first.toUpperCase();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          ref.read(navigationIndexProvider.notifier).state = 3;
+        },
+        child: Container(
+          width: 48,
+          height: 48,
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF60A5FA), Color(0xFF2563EB)],
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initial,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 1,
+                bottom: 1,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.bgDark, width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBalanceCard(
+    BuildContext context,
+    HomeState state,
+    HomeViewModel viewModel,
+  ) {
     return SliverToBoxAdapter(
       child: SizedBox(
         height: 220,
@@ -134,19 +349,20 @@ class HomeScreen extends ConsumerWidget {
               context,
               state,
               viewModel,
-              "Tổng số dư tài khoản",
+              'Tổng số dư tài khoản',
               state.personalBalance,
               [AppColors.primary, AppColors.secondary],
               LucideIcons.user,
             ),
-            if (state.businessBalance > 0 || state.accounts.any((a) => a.type == AccountType.business))
+            if (state.businessBalance > 0 ||
+                state.accounts.any((a) => a.type == AccountType.business))
               _buildBalanceCardItem(
                 context,
                 state,
                 viewModel,
-                "Số dư doanh nghiệp",
+                'Số dư doanh nghiệp',
                 state.businessBalance,
-                [const Color(0xFF6366F1), const Color(0xFFA855F7)],
+                const [Color(0xFF6366F1), Color(0xFFA855F7)],
                 LucideIcons.briefcase,
               ),
           ],
@@ -156,8 +372,8 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildBalanceCardItem(
-    BuildContext context, 
-    HomeState state, 
+    BuildContext context,
+    HomeState state,
     HomeViewModel viewModel,
     String title,
     double amount,
@@ -193,7 +409,11 @@ class HomeScreen extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 16),
+                  Icon(
+                    icon,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     title,
@@ -216,7 +436,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            state.isBalanceVisible ? currencyFormat.format(amount) : "••••••••",
+            state.isBalanceVisible ? currencyFormat.format(amount) : '••••••••',
             style: GoogleFonts.outfit(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -226,12 +446,22 @@ class HomeScreen extends ConsumerWidget {
           const Spacer(),
           Row(
             children: [
-              _buildSmallQuickAction(LucideIcons.plus, "Nạp tiền", () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const DepositScreen()));
+              _buildSmallQuickAction(LucideIcons.plus, 'Nạp tiền', () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DepositScreen(),
+                  ),
+                );
               }),
               const SizedBox(width: 12),
-              _buildSmallQuickAction(LucideIcons.send, "Chuyển tiền", () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const TransferScreen()));
+              _buildSmallQuickAction(LucideIcons.send, 'Chuyển tiền', () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TransferScreen(),
+                  ),
+                );
               }),
             ],
           ),
@@ -240,7 +470,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSmallQuickAction(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildSmallQuickAction(
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -271,46 +505,80 @@ class HomeScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildQuickActionItem(LucideIcons.plusCircle, "Nạp tiền", Colors.greenAccent, () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const DepositScreen()));
-        }),
-        _buildQuickActionItem(LucideIcons.minusCircle, "Rút tiền", Colors.redAccent, () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const WithdrawScreen()));
-        }),
-        _buildQuickActionItem(LucideIcons.arrowLeftRight, "Chuyển tiền", AppColors.accent, () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const TransferScreen()));
-        }),
-        _buildQuickActionItem(LucideIcons.moreHorizontal, "Thêm", Colors.purple, () {}),
+        _buildQuickActionItem(
+          LucideIcons.plusCircle,
+          'Nạp tiền',
+          Colors.greenAccent,
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DepositScreen()),
+            );
+          },
+        ),
+        _buildQuickActionItem(
+          LucideIcons.minusCircle,
+          'Rút tiền',
+          Colors.redAccent,
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const WithdrawScreen()),
+            );
+          },
+        ),
+        _buildQuickActionItem(
+          LucideIcons.arrowLeftRight,
+          'Chuyển tiền',
+          AppColors.accent,
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TransferScreen()),
+            );
+          },
+        ),
+        _buildQuickActionItem(
+          LucideIcons.moreHorizontal,
+          'Thêm',
+          Colors.purple,
+          () {},
+        ),
       ],
     );
   }
 
-  Widget _buildQuickActionItem(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionItem(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
+            ),
+            child: Icon(icon, color: color, size: 24),
           ),
-          child: Icon(icon, color: color, size: 24),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: AppColors.slate400,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: AppColors.slate400,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
-    ),
+        ],
+      ),
     );
   }
 
@@ -319,7 +587,7 @@ class HomeScreen extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          "Tài khoản của bạn",
+          'Tài khoản của bạn',
           style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -330,11 +598,13 @@ class HomeScreen extends ConsumerWidget {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const OpenAccountScreen()),
+              MaterialPageRoute(
+                builder: (context) => const OpenAccountScreen(),
+              ),
             );
           },
           child: Text(
-            "Thêm mới",
+            'Thêm mới',
             style: GoogleFonts.inter(
               fontSize: 14,
               color: AppColors.accent,
@@ -349,7 +619,9 @@ class HomeScreen extends ConsumerWidget {
   Widget _buildAccountsList(HomeState state) {
     if (state.isLoading && state.accounts.isEmpty) {
       return const SliverToBoxAdapter(
-        child: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.accent),
+        ),
       );
     }
 
@@ -357,7 +629,7 @@ class HomeScreen extends ConsumerWidget {
       return SliverToBoxAdapter(
         child: Center(
           child: Text(
-            "Bạn chưa có tài khoản nào",
+            'Bạn chưa có tài khoản nào',
             style: GoogleFonts.inter(color: AppColors.slate400),
           ),
         ),
@@ -377,7 +649,7 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildAccountItem(AccountModel account) {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -445,7 +717,7 @@ class HomeScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Giao dịch gần đây",
+              'Giao dịch gần đây',
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -457,7 +729,7 @@ class HomeScreen extends ConsumerWidget {
                 ref.read(navigationIndexProvider.notifier).state = 1;
               },
               child: Text(
-                "Xem tất cả",
+                'Xem tất cả',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: AppColors.accent,
@@ -480,9 +752,9 @@ class HomeScreen extends ConsumerWidget {
       return SliverToBoxAdapter(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(32.0),
+            padding: const EdgeInsets.all(32),
             child: Text(
-              "Chưa có giao dịch nào",
+              'Chưa có giao dịch nào',
               style: GoogleFonts.inter(color: AppColors.slate400),
             ),
           ),
@@ -494,17 +766,23 @@ class HomeScreen extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildTransactionItem(context, state.recentTransactions[index]),
+          (context, index) =>
+              _buildTransactionItem(context, state.recentTransactions[index]),
           childCount: state.recentTransactions.length,
         ),
       ),
     );
   }
 
-  Widget _buildTransactionItem(BuildContext context, TransactionModel transaction) {
+  Widget _buildTransactionItem(
+    BuildContext context,
+    TransactionModel transaction,
+  ) {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
-    final isNegative = transaction.type == TransactionType.withdraw || transaction.type == TransactionType.transfer;
-    
+    final isNegative =
+        transaction.type == TransactionType.withdraw ||
+        transaction.type == TransactionType.transfer;
+
     return InkWell(
       onTap: () => _showTransactionDetails(context, transaction),
       borderRadius: BorderRadius.circular(20),
@@ -520,7 +798,9 @@ class HomeScreen extends ConsumerWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _getTransactionColor(transaction.type).withValues(alpha: 0.1),
+                color: _getTransactionColor(
+                  transaction.type,
+                ).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -535,7 +815,8 @@ class HomeScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    transaction.description ?? _getTransactionTitle(transaction.type),
+                    transaction.description ??
+                        _getTransactionTitle(transaction.type),
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -559,7 +840,7 @@ class HomeScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  "${isNegative ? '-' : '+'}${currencyFormat.format(transaction.amount)}",
+                  '${isNegative ? '-' : '+'}${currencyFormat.format(transaction.amount)}',
                   style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -578,7 +859,9 @@ class HomeScreen extends ConsumerWidget {
 
   void _showTransactionDetails(BuildContext context, TransactionModel tx) {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
-    final isNegative = tx.type == TransactionType.withdraw || tx.type == TransactionType.transfer;
+    final isNegative =
+        tx.type == TransactionType.withdraw ||
+        tx.type == TransactionType.transfer;
 
     showModalBottomSheet(
       context: context,
@@ -608,16 +891,23 @@ class HomeScreen extends ConsumerWidget {
                 color: _getTransactionColor(tx.type).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(_getTransactionIcon(tx.type), color: _getTransactionColor(tx.type), size: 32),
+              child: Icon(
+                _getTransactionIcon(tx.type),
+                color: _getTransactionColor(tx.type),
+                size: 32,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               _getTransactionTitle(tx.type),
-              style: GoogleFonts.outfit(color: AppColors.slate400, fontSize: 16),
+              style: GoogleFonts.outfit(
+                color: AppColors.slate400,
+                fontSize: 16,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              "${isNegative ? '-' : '+'}${currencyFormat.format(tx.amount)}",
+              '${isNegative ? '-' : '+'}${currencyFormat.format(tx.amount)}',
               style: GoogleFonts.outfit(
                 color: isNegative ? Colors.redAccent : Colors.greenAccent,
                 fontSize: 32,
@@ -633,13 +923,28 @@ class HomeScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  _buildDetailRow("Trạng thái", "Thành công", color: Colors.greenAccent),
-                  _buildDetailRow("Mã giao dịch", "#${tx.id}"),
-                  _buildDetailRow("Thời gian", DateFormat('dd/MM/yyyy HH:mm').format(tx.createdAt)),
-                  _buildDetailRow("Từ tài khoản", tx.fromAccountNumber ?? 'N/A'),
-                  _buildDetailRow("Đến tài khoản", tx.toAccountNumber ?? 'N/A'),
+                  _buildDetailRow(
+                    'Trạng thái',
+                    _getStatusLabel(tx.status),
+                    color: _getStatusColor(tx.status),
+                  ),
+                  _buildDetailRow('Mã giao dịch', '#${tx.id}'),
+                  _buildDetailRow(
+                    'Thời gian',
+                    DateFormat('dd/MM/yyyy HH:mm').format(tx.createdAt),
+                  ),
+                  _buildDetailRow(
+                    'Từ tài khoản',
+                    tx.fromAccountNumber ?? 'N/A',
+                  ),
+                  _buildDetailRow('Đến tài khoản', tx.toAccountNumber ?? 'N/A'),
                   const Divider(color: Colors.white10, height: 32),
-                  _buildDetailRow("Nội dung", tx.description?.isEmpty ?? true ? "Giao dịch ngân hàng" : tx.description!),
+                  _buildDetailRow(
+                    'Nội dung',
+                    tx.description?.isEmpty ?? true
+                        ? 'Giao dịch ngân hàng'
+                        : tx.description!,
+                  ),
                 ],
               ),
             ),
@@ -651,11 +956,16 @@ class HomeScreen extends ConsumerWidget {
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 child: Text(
-                  "Đóng",
-                  style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.bold),
+                  'Đóng',
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -672,13 +982,19 @@ class HomeScreen extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 14)),
           Text(
-            value,
-            style: GoogleFonts.inter(
-              color: color ?? Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
+            label,
+            style: GoogleFonts.inter(color: AppColors.slate400, fontSize: 14),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(
+                color: color ?? Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -686,24 +1002,9 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-
   Widget _buildStatusBadge(TransactionStatus status) {
-    Color color;
-    String label;
-    switch (status) {
-      case TransactionStatus.completed:
-        color = Colors.green;
-        label = "Thành công";
-        break;
-      case TransactionStatus.pending:
-        color = Colors.orange;
-        label = "Đang xử lý";
-        break;
-      case TransactionStatus.failed:
-        color = Colors.red;
-        label = "Thất bại";
-        break;
-    }
+    final color = _getStatusColor(status);
+    final label = _getStatusLabel(status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -720,6 +1021,28 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _getStatusLabel(TransactionStatus status) {
+    switch (status) {
+      case TransactionStatus.completed:
+        return 'Thành công';
+      case TransactionStatus.pending:
+        return 'Chờ duyệt';
+      case TransactionStatus.failed:
+        return 'Thất bại';
+    }
+  }
+
+  Color _getStatusColor(TransactionStatus status) {
+    switch (status) {
+      case TransactionStatus.completed:
+        return Colors.greenAccent;
+      case TransactionStatus.pending:
+        return Colors.orangeAccent;
+      case TransactionStatus.failed:
+        return Colors.redAccent;
+    }
   }
 
   IconData _getTransactionIcon(TransactionType type) {
@@ -747,11 +1070,11 @@ class HomeScreen extends ConsumerWidget {
   String _getTransactionTitle(TransactionType type) {
     switch (type) {
       case TransactionType.deposit:
-        return "Nạp tiền";
+        return 'Nạp tiền';
       case TransactionType.withdraw:
-        return "Rút tiền";
+        return 'Rút tiền';
       case TransactionType.transfer:
-        return "Chuyển khoản";
+        return 'Chuyển khoản';
     }
   }
 
@@ -780,11 +1103,11 @@ class HomeScreen extends ConsumerWidget {
   String _getAccountTitle(AccountType type) {
     switch (type) {
       case AccountType.savings:
-        return "Tài khoản Tiết kiệm";
+        return 'Tài khoản Tiết kiệm';
       case AccountType.checking:
-        return "Tài khoản Thanh toán";
+        return 'Tài khoản Thanh toán';
       case AccountType.business:
-        return "Tài khoản Doanh nghiệp";
+        return 'Tài khoản Doanh nghiệp';
     }
   }
 }

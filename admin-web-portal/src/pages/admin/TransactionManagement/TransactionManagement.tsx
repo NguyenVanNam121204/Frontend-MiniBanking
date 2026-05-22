@@ -22,6 +22,8 @@ import SuccessModal from '../../../components/common/Modal/SuccessModal';
 import { transactionApi, type Transaction } from '../../../services/api/transaction.api';
 import { useAdminRealtimeStore } from '../../../store/useAdminRealtimeStore';
 
+const PAGE_SIZE = 10;
+
 const TransactionManagement: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ const TransactionManagement: React.FC = () => {
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await transactionApi.getAllTransactions(page, 50);
+      const data = await transactionApi.getAllTransactions(page, PAGE_SIZE);
       setTransactions(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
@@ -200,14 +202,20 @@ const TransactionManagement: React.FC = () => {
             type="text"
             placeholder="Tìm theo Mã tham chiếu (Ref Number)..."
             className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50 transition-all"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(0);
+            }}
           />
         </div>
         <select
           className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50"
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
+          onChange={(e) => {
+            setTypeFilter(e.target.value);
+            setPage(0);
+          }}
         >
           <option value="ALL">Tất cả loại</option>
           <option value="DEPOSIT">Nạp tiền</option>
@@ -218,6 +226,7 @@ const TransactionManagement: React.FC = () => {
           onClick={() => {
             setSearchTerm('');
             setTypeFilter('ALL');
+            setPage(0);
           }}
           className="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-xl transition-all border border-slate-700"
           title="Reset bộ lọc"
@@ -356,7 +365,7 @@ const TransactionManagement: React.FC = () => {
 
         <div className="px-6 py-4 bg-slate-800/30 border-t border-slate-800 flex items-center justify-between">
           <p className="text-xs text-slate-500">
-            Hiển thị <span className="text-slate-300">{transactions.length}</span> /{' '}
+            Hiển thị <span className="text-slate-300">{filteredTransactions.length}</span> /{' '}
             <span className="text-slate-300">{totalElements}</span> giao dịch
           </p>
           <div className="flex items-center gap-2">

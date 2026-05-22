@@ -13,6 +13,9 @@ class NotificationViewModel extends StateNotifier<NotificationState> {
   }
 
   Future<void> loadNotifications({bool silent = false}) async {
+    if (!mounted) {
+      return;
+    }
     state = state.copyWith(
       isLoading: !silent,
       isRefreshing: silent,
@@ -20,6 +23,9 @@ class NotificationViewModel extends StateNotifier<NotificationState> {
     );
 
     final result = await _notificationRepository.getNotifications();
+    if (!mounted) {
+      return;
+    }
     result.when(
       success: (notifications) {
         state = state.copyWith(

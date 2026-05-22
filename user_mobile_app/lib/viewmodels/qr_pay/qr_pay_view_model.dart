@@ -118,6 +118,10 @@ class QrPayViewModel extends StateNotifier<QrPayState> {
           .replaceFirst(RegExp(r'^Exception: '), '')
           .replaceFirst(RegExp(r'^error: '), '')
           .replaceFirst(RegExp(r'^DioException.*: '), '');
+      if (errorMsg.toLowerCase().contains('unexpected error')) {
+        errorMsg =
+            'Không tìm thấy tài khoản từ mã QR này. Vui lòng kiểm tra mã QR có được tạo từ ứng dụng và tài khoản nhận còn hoạt động.';
+      }
       state = state.copyWith(
         isPaying: false,
         errorMessage: errorMsg.trim().isNotEmpty

@@ -21,15 +21,24 @@ class HomeViewModel extends StateNotifier<HomeState> {
 
   Future<void> _init() async {
     final userName = await _storageService.getUsername() ?? '';
+    if (!mounted) {
+      return;
+    }
     state = state.copyWith(userName: userName);
-    fetchData();
+    await fetchData();
   }
 
   Future<void> fetchData({bool silent = false}) async {
+    if (!mounted) {
+      return;
+    }
     state = state.copyWith(isLoading: !silent, errorMessage: null);
     try {
       // 1. Get Accounts
       final accounts = await _accountService.getMyAccounts();
+      if (!mounted) {
+        return;
+      }
 
       double personalSum = 0;
       double businessSum = 0;
@@ -49,20 +58,53 @@ class HomeViewModel extends StateNotifier<HomeState> {
         totalBalance: personalSum + businessSum,
       );
 
-      // 2. Get history for the first account if it exists
+      // 2. Get recent history across all accounts, then dedupe by transaction id.
       if (accounts.isNotEmpty) {
         try {
-          final transactions = await _transactionRepository
-              .getTransactionHistory(accounts.first.id, size: 5);
-          state = state.copyWith(recentTransactions: transactions);
+          final transactionGroups = await Future.wait(
+            accounts.map(
+              (account) => _transactionRepository.getTransactionHistory(
+                account.id,
+                size: 5,
+              ),
+            ),
+          );
+          if (!mounted) {
+            return;
+          }
+
+          final transactionById = {
+            for (final transaction in transactionGroups.expand(
+              (items) => items,
+            ))
+              transaction.id: transaction,
+          };
+          final transactions = transactionById.values.toList()
+            ..sort((a, b) {
+              final aTime = a.completedAt ?? a.createdAt;
+              final bTime = b.completedAt ?? b.createdAt;
+              return bTime.compareTo(aTime);
+            });
+
+          state = state.copyWith(
+            recentTransactions: transactions.take(5).toList(),
+          );
         } catch (e) {
           log('Error fetching transactions: $e');
           // Don't set global error if only transactions fail
         }
+      } else {
+        state = state.copyWith(recentTransactions: []);
       }
 
+      if (!mounted) {
+        return;
+      }
       state = state.copyWith(isLoading: false);
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString().replaceAll('Exception: ', ''),

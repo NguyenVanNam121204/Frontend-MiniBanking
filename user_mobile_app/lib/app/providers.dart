@@ -127,15 +127,14 @@ final forgotPasswordViewModelProvider =
       return ForgotPasswordViewModel(ref.watch(authServiceProvider));
     });
 
-final homeViewModelProvider = StateNotifierProvider<HomeViewModel, HomeState>((
-  ref,
-) {
-  return HomeViewModel(
-    ref.watch(accountServiceProvider),
-    ref.watch(storageServiceProvider),
-    ref.watch(transactionHistoryRepositoryProvider),
-  );
-});
+final homeViewModelProvider =
+    StateNotifierProvider.autoDispose<HomeViewModel, HomeState>((ref) {
+      return HomeViewModel(
+        ref.watch(accountServiceProvider),
+        ref.watch(storageServiceProvider),
+        ref.watch(transactionHistoryRepositoryProvider),
+      );
+    });
 
 final openAccountViewModelProvider =
     StateNotifierProvider<OpenAccountViewModel, OpenAccountState>((ref) {
@@ -182,7 +181,7 @@ final transactionHistoryViewModelProvider =
     });
 
 final profileViewModelProvider =
-    StateNotifierProvider<ProfileViewModel, ProfileState>((ref) {
+    StateNotifierProvider.autoDispose<ProfileViewModel, ProfileState>((ref) {
       return ProfileViewModel(ref.watch(userRepositoryProvider));
     });
 
@@ -200,8 +199,10 @@ final qrPayViewModelProvider =
     });
 
 final notificationViewModelProvider =
-    StateNotifierProvider<NotificationViewModel, NotificationState>((ref) {
-      return NotificationViewModel(ref.watch(notificationRepositoryProvider));
-    });
+    StateNotifierProvider.autoDispose<NotificationViewModel, NotificationState>(
+      (ref) {
+        return NotificationViewModel(ref.watch(notificationRepositoryProvider));
+      },
+    );
 
 final navigationIndexProvider = StateProvider<int>((ref) => 0);

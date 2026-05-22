@@ -10,14 +10,16 @@ class AuthService {
 
   AuthService(this._authRepository, this._storageService);
 
-  Future<Result<AuthResponseDto, AppException>> login(LoginRequestDto request) async {
+  Future<Result<AuthResponseDto, AppException>> login(
+    LoginRequestDto request,
+  ) async {
     final result = await _authRepository.login(request);
-    
+
     return result.when(
       success: (data) async {
         await _storageService.saveTokens(
-          accessToken: data.accessToken, 
-          refreshToken: data.refreshToken
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
         );
         await _storageService.saveUsername(data.user.username);
         return Result.success(data);
@@ -26,31 +28,43 @@ class AuthService {
     );
   }
 
-  Future<Result<void, AppException>> register(RegisterRequestDto request) async {
+  Future<Result<void, AppException>> register(
+    RegisterRequestDto request,
+  ) async {
     return _authRepository.register(request);
   }
 
-  Future<Result<void, AppException>> verifyEmail(VerifyEmailRequestDto request) async {
+  Future<Result<void, AppException>> verifyEmail(
+    VerifyEmailRequestDto request,
+  ) async {
     return _authRepository.verifyEmail(request);
   }
 
-  Future<Result<void, AppException>> forgotPassword(ForgotPasswordRequestDto request) async {
+  Future<Result<void, AppException>> forgotPassword(
+    ForgotPasswordRequestDto request,
+  ) async {
     return _authRepository.forgotPassword(request);
   }
 
-  Future<Result<void, AppException>> resetPassword(ResetPasswordRequestDto request) async {
+  Future<Result<void, AppException>> resetPassword(
+    ResetPasswordRequestDto request,
+  ) async {
     return _authRepository.resetPassword(request);
   }
 
   Future<Result<void, AppException>> resendVerification(String email) async {
-    return _authRepository.resendVerification(ForgotPasswordRequestDto(email: email));
+    return _authRepository.resendVerification(
+      ForgotPasswordRequestDto(email: email),
+    );
   }
-  Future<Result<void, AppException>> verifyResetOtp(VerifyEmailRequestDto request) async {
+
+  Future<Result<void, AppException>> verifyResetOtp(
+    VerifyEmailRequestDto request,
+  ) async {
     return _authRepository.verifyResetOtp(request);
   }
 
   Future<void> logout() async {
-    await _storageService.clearTokens();
-    await _storageService.clearUsername();
+    await _storageService.clearAll();
   }
 }

@@ -10,9 +10,15 @@ class ProfileViewModel extends StateNotifier<ProfileState> {
   }
 
   Future<void> loadProfile() async {
+    if (!mounted) {
+      return;
+    }
     state = state.copyWith(isLoading: true, errorMessage: null);
     final result = await _userRepository.getProfile();
-    
+    if (!mounted) {
+      return;
+    }
+
     result.when(
       success: (user) {
         state = state.copyWith(user: user, isLoading: false);

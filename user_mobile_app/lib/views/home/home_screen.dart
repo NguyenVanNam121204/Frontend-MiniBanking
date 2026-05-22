@@ -11,8 +11,10 @@ import '../../models/transaction/transaction_model.dart';
 import '../../viewmodels/home/home_state.dart';
 import '../../viewmodels/home/home_view_model.dart';
 import '../../viewmodels/notification/notification_state.dart';
+import '../../widgets/security/pin_setup_prompt_card.dart';
 import '../account/open_account_screen.dart';
 import '../notification/notification_screen.dart';
+import '../profile/security/setup_pin_screen.dart';
 import '../transaction/deposit/deposit_screen.dart';
 import '../transaction/transfer/transfer_screen.dart';
 import '../transaction/withdraw/withdraw_screen.dart';
@@ -29,6 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late final AnimationController _bellAnimationController;
   late final Animation<double> _bellRotation;
   int _lastUnreadCount = 0;
+  bool _isPinPromptDismissed = false;
 
   @override
   void initState() {
@@ -68,6 +71,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final homeState = ref.watch(homeViewModelProvider);
     final homeViewModel = ref.read(homeViewModelProvider.notifier);
     final notificationState = ref.watch(notificationViewModelProvider);
+    final profileState = ref.watch(profileViewModelProvider);
+    final hasPin = profileState.user?.hasPin ?? true;
+    final shouldShowPinPrompt =
+        profileState.user != null && !hasPin && !_isPinPromptDismissed;
 
     ref.listen<NotificationState>(notificationViewModelProvider, (
       previous,
@@ -86,6 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       body: RefreshIndicator(
         onRefresh: () async {
           await homeViewModel.fetchData();
+          await ref.read(profileViewModelProvider.notifier).refresh();
           await ref.read(notificationViewModelProvider.notifier).refresh();
         },
         color: AppColors.accent,
@@ -94,7 +102,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           slivers: [
             _buildAppBar(context, homeState, notificationState),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
-            _buildBalanceCard(context, homeState, homeViewModel),
+            if (shouldShowPinPrompt)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: PinSetupPromptCard(
+                    onSetup: () => _openSetupPinScreen(context),
+                    onLater: () {
+                      setState(() => _isPinPromptDismissed = true);
+                    },
+                  ),
+                ),
+              ),
+            _buildBalanceCard(context, homeState, homeViewModel, hasPin),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -102,7 +122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 32),
-                    _buildQuickActions(context),
+                    _buildQuickActions(context, hasPin),
                     const SizedBox(height: 32),
                     _buildAccountSectionHeader(context),
                     const SizedBox(height: 16),
@@ -332,10 +352,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+  Future<void> _openSetupPinScreen(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SetupPinScreen()),
+    );
+    if (!mounted) {
+      return;
+    }
+    await ref.read(profileViewModelProvider.notifier).refresh();
+  }
+
+  void _openFinancialAction(
+    BuildContext context, {
+    required bool hasPin,
+    required Widget destination,
+  }) {
+    if (!hasPin) {
+      showPinSetupPromptSheet(
+        context: context,
+        onSetup: () => _openSetupPinScreen(context),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => destination),
+    );
+  }
+
   Widget _buildBalanceCard(
     BuildContext context,
     HomeState state,
     HomeViewModel viewModel,
+    bool hasPin,
   ) {
     return SliverToBoxAdapter(
       child: SizedBox(
@@ -353,6 +404,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               state.personalBalance,
               [AppColors.primary, AppColors.secondary],
               LucideIcons.user,
+              hasPin,
             ),
             if (state.businessBalance > 0 ||
                 state.accounts.any((a) => a.type == AccountType.business))
@@ -364,6 +416,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 state.businessBalance,
                 const [Color(0xFF6366F1), Color(0xFFA855F7)],
                 LucideIcons.briefcase,
+                hasPin,
               ),
           ],
         ),
@@ -379,6 +432,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     double amount,
     List<Color> gradientColors,
     IconData icon,
+    bool hasPin,
   ) {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
 
@@ -447,20 +501,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Row(
             children: [
               _buildSmallQuickAction(LucideIcons.plus, 'Nạp tiền', () {
-                Navigator.push(
+                _openFinancialAction(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const DepositScreen(),
-                  ),
+                  hasPin: hasPin,
+                  destination: const DepositScreen(),
                 );
               }),
               const SizedBox(width: 12),
               _buildSmallQuickAction(LucideIcons.send, 'Chuyển tiền', () {
-                Navigator.push(
+                _openFinancialAction(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const TransferScreen(),
-                  ),
+                  hasPin: hasPin,
+                  destination: const TransferScreen(),
                 );
               }),
             ],
@@ -501,7 +553,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  Widget _buildQuickActions(BuildContext context, bool hasPin) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -510,9 +562,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           'Nạp tiền',
           Colors.greenAccent,
           () {
-            Navigator.push(
+            _openFinancialAction(
               context,
-              MaterialPageRoute(builder: (context) => const DepositScreen()),
+              hasPin: hasPin,
+              destination: const DepositScreen(),
             );
           },
         ),
@@ -521,9 +574,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           'Rút tiền',
           Colors.redAccent,
           () {
-            Navigator.push(
+            _openFinancialAction(
               context,
-              MaterialPageRoute(builder: (context) => const WithdrawScreen()),
+              hasPin: hasPin,
+              destination: const WithdrawScreen(),
             );
           },
         ),
@@ -532,9 +586,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           'Chuyển tiền',
           AppColors.accent,
           () {
-            Navigator.push(
+            _openFinancialAction(
               context,
-              MaterialPageRoute(builder: (context) => const TransferScreen()),
+              hasPin: hasPin,
+              destination: const TransferScreen(),
             );
           },
         ),
@@ -787,6 +842,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       onTap: () => _showTransactionDetails(context, transaction),
       borderRadius: BorderRadius.circular(20),
       child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),

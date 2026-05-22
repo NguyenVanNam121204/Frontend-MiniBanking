@@ -7,10 +7,10 @@ import '../../app/providers.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/profile_menu_item.dart';
 import 'widgets/profile_section.dart';
+import '../auth/login/login_screen.dart';
 import 'security/change_password_screen.dart';
 import 'security/setup_pin_screen.dart';
 import 'security/change_pin_screen.dart';
-import 'package:user_mobile_app/views/splash_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -25,7 +25,8 @@ class ProfileScreen extends ConsumerWidget {
         child: state.isLoading && state.user == null
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-                onRefresh: () => ref.read(profileViewModelProvider.notifier).refresh(),
+                onRefresh: () =>
+                    ref.read(profileViewModelProvider.notifier).refresh(),
                 backgroundColor: AppColors.surface,
                 color: AppColors.accent,
                 child: SingleChildScrollView(
@@ -37,34 +38,41 @@ class ProfileScreen extends ConsumerWidget {
                           name: state.user!.username,
                           email: state.user!.email,
                         ),
-                      
+
                       ProfileSection(
                         title: "BẢO MẬT",
                         children: [
                           ProfileMenuItem(
                             icon: LucideIcons.lock,
                             title: "Đổi mật khẩu",
-                            subtitle: "Cập nhật mật khẩu định kỳ để an toàn hơn",
+                            subtitle:
+                                "Cập nhật mật khẩu định kỳ để an toàn hơn",
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const ChangePasswordScreen(),
+                                ),
                               );
                             },
                           ),
                           ProfileMenuItem(
                             icon: LucideIcons.key,
-                            title: state.user?.hasPin == true ? "Đổi mã PIN" : "Thiết lập mã PIN",
-                            subtitle: state.user?.hasPin == true 
-                                ? "Mã PIN 6 số dùng cho giao dịch" 
+                            title: state.user?.hasPin == true
+                                ? "Đổi mã PIN"
+                                : "Thiết lập mã PIN",
+                            subtitle: state.user?.hasPin == true
+                                ? "Mã PIN 6 số dùng cho giao dịch"
                                 : "Bạn chưa có mã PIN giao dịch",
-                            iconColor: state.user?.hasPin == true ? null : Colors.orangeAccent,
+                            iconColor: state.user?.hasPin == true
+                                ? null
+                                : Colors.orangeAccent,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => state.user?.hasPin == true 
-                                      ? const ChangePinScreen() 
+                                  builder: (_) => state.user?.hasPin == true
+                                      ? const ChangePinScreen()
                                       : const SetupPinScreen(),
                                 ),
                               );
@@ -92,7 +100,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
 
                       const SizedBox(height: 32),
-                      
+
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: SizedBox(
@@ -100,13 +108,19 @@ class ProfileScreen extends ConsumerWidget {
                           child: ElevatedButton(
                             onPressed: () => _showLogoutDialog(context, ref),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                              backgroundColor: Colors.redAccent.withValues(
+                                alpha: 0.1,
+                              ),
                               foregroundColor: Colors.redAccent,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.2)),
+                                side: BorderSide(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                ),
                               ),
                             ),
                             child: Row(
@@ -126,7 +140,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
                       Text(
                         "Phiên bản 1.0.0",
@@ -152,7 +166,10 @@ class ProfileScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           "Đăng xuất",
-          style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Text(
           "Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?",
@@ -168,20 +185,23 @@ class ProfileScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
+              ref.read(realtimeEventServiceProvider).stop();
               await ref.read(authServiceProvider).logout();
               if (context.mounted) {
                 // Reset navigation index to Home
                 ref.read(navigationIndexProvider.notifier).state = 0;
 
                 Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const SplashScreen()),
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
                   (route) => false,
                 );
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text("Đăng xuất"),
           ),

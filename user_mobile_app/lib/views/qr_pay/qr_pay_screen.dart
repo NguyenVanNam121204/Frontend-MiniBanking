@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -355,12 +356,130 @@ class _QrPayScreenState extends ConsumerState<QrPayScreen>
     }
 
     // Parse QR data: có thể là "QRPAY:ACCOUNT_NUMBER" hoặc chỉ là số tài khoản
-    String accountNumber = decodedData;
-    if (decodedData.startsWith('QRPAY:')) {
-      accountNumber = decodedData.split(':')[1];
+    final accountNumber = _extractAccountNumberFromQr(decodedData);
+    if (accountNumber == null) {
+      _showErrorDialog(
+        'Mã QR này không đúng định dạng QR Pay của ứng dụng.\n\n'
+        'Ứng dụng hiện hỗ trợ QR chứa số tài khoản nội bộ hoặc mã được tạo từ tab "Mã QR của tôi".',
+      );
+      return;
     }
 
     await _lookupAndShowTransferSheet(accountNumber);
+  }
+
+  String? _extractAccountNumberFromQr(String rawValue) {
+    final value = rawValue.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+
+    final qrPayMatch = RegExp(
+      r'^QRPAY\s*[:|]\s*([A-Za-z0-9_-]+)',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (qrPayMatch != null) {
+      return _normalizeAccountNumber(qrPayMatch.group(1));
+    }
+
+    final directAccount = _normalizeAccountNumber(value);
+    if (directAccount != null) {
+      return directAccount;
+    }
+
+    try {
+      final decoded = jsonDecode(value);
+      final accountFromJson = _extractAccountNumberFromJson(decoded);
+      if (accountFromJson != null) {
+        return accountFromJson;
+      }
+    } catch (_) {
+      // Not a JSON QR payload.
+    }
+
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.queryParameters.isNotEmpty) {
+      for (final key in const [
+        'accountNumber',
+        'account',
+        'acc',
+        'stk',
+        'toAccount',
+      ]) {
+        final account = _normalizeAccountNumber(uri.queryParameters[key]);
+        if (account != null) {
+          return account;
+        }
+      }
+    }
+
+    final labeledAccountMatch = RegExp(
+      r'(?:accountNumber|account|stk|soTaiKhoan|số tài khoản)\s*[:=]\s*([A-Za-z0-9_-]{5,32})',
+      caseSensitive: false,
+      unicode: true,
+    ).firstMatch(value);
+    if (labeledAccountMatch != null) {
+      return _normalizeAccountNumber(labeledAccountMatch.group(1));
+    }
+
+    final numericMatches = RegExp(r'\b\d{6,20}\b')
+        .allMatches(value)
+        .map((match) => match.group(0))
+        .whereType<String>()
+        .toList();
+    if (numericMatches.length == 1) {
+      return _normalizeAccountNumber(numericMatches.first);
+    }
+
+    return null;
+  }
+
+  String? _extractAccountNumberFromJson(dynamic value) {
+    if (value is Map) {
+      for (final key in const [
+        'accountNumber',
+        'account',
+        'acc',
+        'stk',
+        'toAccount',
+      ]) {
+        final account = _normalizeAccountNumber(value[key]?.toString());
+        if (account != null) {
+          return account;
+        }
+      }
+
+      for (final nestedValue in value.values) {
+        final account = _extractAccountNumberFromJson(nestedValue);
+        if (account != null) {
+          return account;
+        }
+      }
+    }
+
+    if (value is List) {
+      for (final item in value) {
+        final account = _extractAccountNumberFromJson(item);
+        if (account != null) {
+          return account;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  String? _normalizeAccountNumber(String? value) {
+    if (value == null) {
+      return null;
+    }
+
+    final cleaned = value.trim().replaceAll(RegExp(r'[\s.-]'), '');
+    if (!RegExp(r'^[A-Za-z0-9_-]{5,32}$').hasMatch(cleaned)) {
+      return null;
+    }
+
+    return cleaned;
   }
 
   /// Tra cứu tài khoản từ backend rồi mở form chuyển khoản thật.

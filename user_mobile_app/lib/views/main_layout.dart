@@ -6,10 +6,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../app/providers.dart';
 import '../core/app/app_colors.dart';
+import '../core/network/dio_client.dart';
 import '../models/notification/app_notification_model.dart';
 import '../services/realtime_event_service.dart';
+import '../widgets/security/pin_setup_prompt_card.dart';
+import 'auth/login/login_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
+import 'profile/security/setup_pin_screen.dart';
 import 'qr_pay/qr_pay_screen.dart';
 import 'transaction/history/transaction_history_screen.dart';
 
@@ -29,18 +33,23 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   @override
   void initState() {
     super.initState();
+    authSessionExpiredNotifier.addListener(_handleSessionExpired);
     Future.microtask(() async {
       final realtimeService = ref.read(realtimeEventServiceProvider);
       _realtimeSubscription = realtimeService.events.listen(
         _handleRealtimeEvent,
       );
       await realtimeService.startUserStream();
+      if (!mounted) {
+        return;
+      }
       _startFallbackRefresh();
     });
   }
 
   @override
   void dispose() {
+    authSessionExpiredNotifier.removeListener(_handleSessionExpired);
     for (final timer in _realtimeRefreshTimers) {
       timer.cancel();
     }
@@ -51,9 +60,23 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     super.dispose();
   }
 
+  void _handleSessionExpired() {
+    if (!mounted) {
+      return;
+    }
+
+    ref.read(realtimeEventServiceProvider).stop();
+    ref.read(navigationIndexProvider.notifier).state = 0;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(navigationIndexProvider);
+    final profileState = ref.watch(profileViewModelProvider);
 
     final screens = [
       const HomeScreen(),
@@ -77,8 +100,17 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ),
         child: BottomNavigationBar(
           currentIndex: currentIndex,
-          onTap: (index) =>
-              ref.read(navigationIndexProvider.notifier).state = index,
+          onTap: (index) {
+            final hasPin = profileState.user?.hasPin ?? true;
+            if (index == 2 && !hasPin) {
+              showPinSetupPromptSheet(
+                context: context,
+                onSetup: () => _openSetupPinScreen(context),
+              );
+              return;
+            }
+            ref.read(navigationIndexProvider.notifier).state = index;
+          },
           backgroundColor: AppColors.bgDark,
           selectedItemColor: AppColors.accent,
           unselectedItemColor: AppColors.slate400,
@@ -115,6 +147,17 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ),
       ),
     );
+  }
+
+  Future<void> _openSetupPinScreen(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SetupPinScreen()),
+    );
+    if (!mounted) {
+      return;
+    }
+    await ref.read(profileViewModelProvider.notifier).refresh();
   }
 
   Future<void> _handleRealtimeEvent(RealtimeEvent event) async {
@@ -173,10 +216,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       return;
     }
 
+    final homeViewModel = ref.read(homeViewModelProvider.notifier);
+    final notificationViewModel = ref.read(
+      notificationViewModelProvider.notifier,
+    );
+
     await Future.wait([
-      if (includeBalance)
-        ref.read(homeViewModelProvider.notifier).fetchData(silent: true),
-      ref.read(notificationViewModelProvider.notifier).refresh(),
+      if (includeBalance) homeViewModel.fetchData(silent: true),
+      notificationViewModel.refresh(),
     ]);
   }
 
@@ -188,6 +235,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       }
       _isFallbackRefreshing = true;
       _refreshRealtimeState(includeBalance: true).whenComplete(() {
+        if (!mounted) {
+          return;
+        }
         _isFallbackRefreshing = false;
       });
     });
